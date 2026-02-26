@@ -1,30 +1,56 @@
-float4 main(PS_IN pin) {
-  // Reading depth value for current pixel of the scene:
-  float depthValue = pin.GetDepth();
+//
+// visual improvements that can be made:
+// - when calculating sun lighting along ray, check if point is in shadow (quite expensive)
+// - currently fog only reacts to sun. possibly add contribution of other light sources in the scene
+//
+//
 
-  // Turning that depth value in world coordinates in meters (relative to camera position):
+float4 main(PS_IN pin) {
+  float depthValue = pin.GetDepth();
   float4 posW = mul(float4(pin.Tex, depthValue, 1), gTexToCamera);
   posW.xyz /= posW.w;
-  pin.PosC = normalize(posW.xyz) * 1e3;
 
-  // Vertical offset is based on relative coordinate, but gets smaller with distance to avoid messing up distant relief
-  float offset = posW.y / (1 + max(0, length(posW.xz) - 100) / 500);
+  //
+  // figure out ray distance, direction, and origin
+  // relative to track sea level
+  float t = length(posW.xyz);
+  float3 rd = posW.xyz / t;
+  float3 ro = gCameraPosition - float3(0.0, gHeightOffset, 0.0);
 
-  // Turning vertical offset to a nice intensity gradient with smoothstep:
-  float intensity = gIntensity * smoothstep(0, 1, saturate((offset - 40) / 40));
+  float a = gDensity;
+  float b = gFalloff;
+  float fogAmount = 0.0;
 
-  if (USE_LINEAR_COLOR_SPACE) {
-    intensity = toLinearColorSpace(intensity).r;
-    // If argument for clip is below zero, blending stage will be skipped, slightly improving performance:
-    clip(depthValue == 1 
-      ? -1                   // 1 for depthValue usually means it’s the sky
-      : intensity - 0.001);  // otherwise, we clip pixels that would be barely visible anyway
-  } else {    
-    clip(intensity - 0.001);
+  //
+  // see: https://iquilezles.org/articles/fog/
+  // calculates integral of density along ray
+  // avoid division by zero when ray is parallel to ground plane
+  if (abs(rd.y) < 0.001) {
+      fogAmount = a * exp(-ro.y * b) * t;
+  } else {
+      fogAmount = (a / b) * exp(-ro.y * b) * (1.0 - exp(-t * rd.y * b)) / rd.y;
   }
 
-  // Building resulting RGBA color:
-  return float4(
-    pin.GetFogColor(),  // we could just use gFogColor, but this way it would account for sunlight absorbing in fog
-    intensity);
+  // see: https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law
+  // light decays exponentially as it travels through a volume
+  float alpha = saturate(1.0 - exp(-fogAmount * gIntensity));
+
+  // also from https://iquilezles.org/articles/fog/
+  // directional in-scattering
+  // additively blends sun's color based on how closely we are looking at it to fake mie scattering
+  float sunAmount = max(dot(rd, gSunDirection), 0.0);
+  float3 baseFogColor = pin.GetFogColor();
+  float3 fogColor = baseFogColor + (gSunColor * pow(sunAmount, gSunScattering));
+
+  //
+  // clip pixels with very low alpha
+  // avoids unnecessary overdraw and can save some performance
+  if (USE_LINEAR_COLOR_SPACE) {
+    alpha = toLinearColorSpace(alpha).r;
+    clip(depthValue == 1.0 ? -1.0 : alpha - 0.001);
+  } else {
+    clip(alpha - 0.001);
+  }
+
+  return float4(fogColor, alpha);
 }

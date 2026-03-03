@@ -153,6 +153,9 @@ if ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE then
   end)
 end
 
+Nova = require 'src/state'
+Nova.init()
+
 require 'src/consts'               -- some general constant values
 require 'src/utils'                -- helpful functions
 require 'src/conditions_converter' -- thing to turn conditions (esp. weather type) info something usable: a few easy to use numbers
@@ -412,6 +415,8 @@ function script.update(dt)
     CurrentConditions.windSpeed = math.lerp(CurrentConditions.windSpeed, CurrentConditions.windSpeedInstant, mix)
   end
   if MEASURE_PERFORMANCE then task:done() end
+
+  Nova.flush()
 end
 
 if ScriptSettings.POSTPROCESSING.LIGHTWEIGHT_REPLACEMENT then
@@ -440,4 +445,4 @@ end)
 -- function script.asyncUpdate()
 --   collectgarbage("collect")
 --   collectgarbage("collect")
--- end 
+-- end

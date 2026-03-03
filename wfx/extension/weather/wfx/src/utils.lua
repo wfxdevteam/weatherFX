@@ -2,6 +2,24 @@
 -- Common helper functions and entities, pretty much generic.
 --------
 
+local mmin, mmax = math.min, math.max
+function math.sat(x)
+  return mmax(mmin(x, 1), 0)
+end
+
+function math.limit(x, t)
+  return mmax(mmin(x, t), -t)
+end
+
+function math.fade(v, t, e)
+  local d = math.sign(t - v)
+  v = v + d * e
+  if math.sign(t - v) ~= d then
+    v = t
+  end
+  return v
+end
+
 -- Generates random direction in 2D space
 function math.randomVec2()
   return (vec2(math.random(), math.random()) - 0.5):normalize()
@@ -85,7 +103,7 @@ local gcRuns = 0
 function RunGC() 
   local before = collectgarbage('count')
   collectgarbage()
-  gcSmooth = math.applyLag(gcSmooth, before - collectgarbage('count'), gcRuns < 50 and 0.9 or 0.995, 0.01)
+  gcSmooth = math.applyLag(gcSmooth, before - collectgarbage('count'), gcRuns < 50 and 0.8 or 0.9, 0.01)
   gcRuns = gcRuns + 1
   ac.debug('GC (KB)', gcSmooth)
 end

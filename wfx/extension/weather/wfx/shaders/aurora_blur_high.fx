@@ -4,9 +4,10 @@ float gatherGlow(float2 uv, float2 blurDir, float4 offset){
   float ret = 0;
   for (int i = 0; i < 16; ++i){
     float2 uvOffset = reflect(POISSON_DISC_16[i].xy, normalize(offset.yz - 0.5));
-    ret += txPrepared.SampleLevel(samLinearBorder0, uv + blurDir * ((i + offset.x) / 16.) + uvOffset * gNoiseScale, 0).x;
+    ret += txPrepared.SampleLevel(samLinearBorder0, uv + blurDir * ((i + offset.x) / 16.) + uvOffset * gNoiseScale, 0).x
+      + txPrepared.SampleLevel(samLinearBorder0, uv + blurDir * ((i + offset.x) / 16.) + uvOffset * -gNoiseScale, 0).x;
   }
-  return ret / 16;
+  return ret / 32;
 }
 
 float main(PS_IN pin) {

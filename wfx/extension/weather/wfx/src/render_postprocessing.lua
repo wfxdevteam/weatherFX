@@ -29,6 +29,7 @@ local function bloomHelper(resolution)
   end
   local threshold1 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), inSize.y), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
   local threshold2 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
+  local threshold2Key = tostring(threshold2)
   local thresholdB = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
   local thresholdPass1 = {
     textures = { txInput = '' },
@@ -40,7 +41,7 @@ local function bloomHelper(resolution)
     directValuesExchange = true,
   }
   local thresholdPass2 = {
-    textures = { ['txInput.1'] = threshold1 },
+    textures = { ['txInput.1'] = tostring(threshold1) },
     values = { gBrightnessMult = 1 },
     defines = { PASS = 2 },
     cacheKey = 2,
@@ -48,7 +49,7 @@ local function bloomHelper(resolution)
     async = true,
     directValuesExchange = true,
   }
-  local list = {} ---@type {tex: ui.ExtraCanvas, pass1: table, pass2: table}[]
+  local list = {} ---@type {tex: ui.ExtraCanvas, texKey: string, pass1: table, pass2: table}[]
   local appliedQuality = -1
   do
     for i = 1, steps do
@@ -56,7 +57,7 @@ local function bloomHelper(resolution)
       list[i] = {
         tex = ui.ExtraCanvas(resolution, 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float),
         pass1 = {
-          textures = i == 1 and { txInput = '', ['txLimit.1'] = thresholdB } or { txInput = list[i - 1].tex },
+          textures = i == 1 and { txInput = '', ['txLimit.1'] = tostring(thresholdB) } or { txInput = list[i - 1].texKey },
           values = { gTexSizeInv = i == 1 and 1 / inSize or 1 / list[i - 1].tex:size() },
           defines = i == 1 and { PASS_INDEX = i } or {},
           cacheKey = i,
@@ -65,12 +66,13 @@ local function bloomHelper(resolution)
           shader = 'shaders/pp_bloom_downsample.fx'
         }
       }
+      list[i].texKey = tostring(list[i].tex)
     end
     for i = 1, steps - 1 do
       list[i].pass2 = {
         blendMode = render.BlendMode.BlendPremultiplied,
         textures = {
-          txInput = list[i + 1].tex
+          txInput = list[i + 1].texKey
         },
         values = {
           gTexSizeInv = 1 / list[i + 1].tex:size()
@@ -84,23 +86,23 @@ local function bloomHelper(resolution)
     end
   end
   local quality1
-  return function (input, quality)
-    if quality == 1 then
-      if not quality1 then
-        quality1 = { tex = ui.ExtraCanvas(list[2].tex:size(), 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float), pass = {
-          textures = { txInput = '' },
-          values = { gTexSizeInv = 1 / list[2].tex:size(), gLimit = 1 },
-          shader = 'shaders/pp_bloom_quality1.fx',
-          directValuesExchange = true,
-          async = true,
-        } }
-      end
-      quality1.pass.textures.txInput = input
-      quality1.pass.values.gLimit = GammaFixBrightnessOffset * 1600
-      quality1.tex:updateWithShader(quality1.pass)
-      list[2].tex:gaussianBlurFrom(quality1.tex, 15)
-      return list[2].tex
+  local function implQualityLow(input)
+    if not quality1 then
+      quality1 = { tex = ui.ExtraCanvas(list[2].tex:size(), 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float), pass = {
+        textures = { txInput = '' },
+        values = { gTexSizeInv = 1 / list[2].tex:size(), gLimit = 1 },
+        shader = 'shaders/pp_bloom_quality1.fx',
+        directValuesExchange = true,
+        async = true,
+      } }
     end
+    quality1.pass.textures.txInput = input
+    quality1.pass.values.gLimit = GammaFixBrightnessOffset * 1600
+    quality1.tex:updateWithShader(quality1.pass)
+    list[2].tex:gaussianBlurFrom(quality1.texKey, 15)
+    return list[2].texKey
+  end
+  local function implQualityNormal(input, quality)
     if quality ~= appliedQuality then
       appliedQuality = quality
       if quality <= 2 then
@@ -117,7 +119,7 @@ local function bloomHelper(resolution)
       thresholdPass2.values.gBrightnessMult = UseGammaFix and GammaFixBrightnessOffset or 1
       threshold1:updateWithShader(thresholdPass1)
       threshold2:updateWithShader(thresholdPass2)
-      thresholdB:gaussianBlurFrom(threshold2, 15)
+      thresholdB:gaussianBlurFrom(threshold2Key, 15)
     end
     list[1].pass1.textures.txInput = input
     for i = 1, steps do
@@ -126,7 +128,14 @@ local function bloomHelper(resolution)
     for i = steps - 1, 1, -1 do
       if not list[i].tex:updateWithShader(list[i].pass2) then return 'color::#000000' end
     end
-    return list[1].tex
+    return list[1].texKey
+  end
+  return function (input, quality)
+    if quality == 1 then
+      return implQualityLow(input)
+    else
+      return implQualityNormal(input, quality)
+    end
   end
 end
 
@@ -166,7 +175,7 @@ local function createPPData(resolution)
       async = true,
       textures = {
         ['txNoise'] = 'dynamic::noise',
-        ['txMask.1'] = skyMask,
+        ['txMask.1'] = tostring(skyMask),
       },
       values = {
         gSunPosition = vec2()
@@ -187,7 +196,7 @@ local function createPPData(resolution)
     passSun2Params = {
       async = true,
       textures = {
-        ['txIn.1'] = sunRays1,
+        ['txIn.1'] = tostring(sunRays1),
       },
       values = {
         gSunPosition = vec2()
@@ -202,7 +211,7 @@ local function createPPData(resolution)
     passSun3Params = {
       async = true,
       textures = {
-        ['txIn.1'] = sunRays2,
+        ['txIn.1'] = tostring(sunRays2),
       },
       values = {
         gSunPosition = vec2()
@@ -220,8 +229,8 @@ local function createPPData(resolution)
       textures = {
         txInput = 'dynamic::pp::hdr',
         txBlur2 = 'color::#000000',
-        ['txMask.1'] = skyMask,
-        ['txSunRaysMask.1'] = sunRays1,
+        ['txMask.1'] = tostring(skyMask),
+        ['txSunRaysMask.1'] = tostring(sunRays1),
         txColorGrading = 'dynamic::pp::colorGrading3D',
         txDirty = 'color::#000000',
         txGrain = 'color::#000000'
@@ -235,6 +244,7 @@ local function createPPData(resolution)
         FEATURE_USE_CHROMATIC_ABERRATION = false,
         FEATURE_USE_FILM_GRAIN = false,
         FEATURE_USE_GLARE_CHROMATIC_ABERRATION = ScriptSettings.POSTPROCESSING.GLARE_CHROMATIC_ABERRATION,
+        FEATURE_USE_LDR = not Sim.isHDR,
         gMatHDR = mat4x4(),
         gMatLDR = mat4x4(),
         gColorGrading = 0,
@@ -259,8 +269,9 @@ local function createPPData(resolution)
       },
       defines = {
         TONEMAP_FN = -1,
+        VR_MODE = Sim.isVRConnected and 1 or 0,
       },
-      cacheKey = 0,
+      cacheKey = Sim.isVRConnected and 1 or 0,
       directValuesExchange = true,
       compileValuesMask = '{ FEATURE_? }', --[[ this option will force CSP to recompile specialized shaders when these values would change. Do
         not use this thing for values such as decimals: each combination seen will be stored in memory and cached on disk. ]]
@@ -299,7 +310,7 @@ local aePass1 = {
 
 local aePass2 = {
   textures = {
-    ['txInput.1'] = aeMeasure1,
+    ['txInput.1'] = tostring(aeMeasure1),
   },
   shader = [[float main(PS_IN pin) {
     float r = 0;
@@ -312,7 +323,7 @@ local aePass2 = {
 
 local aePass3 = {
   textures = {
-    ['txInput.1'] = aeMeasure2,
+    ['txInput.1'] = tostring(aeMeasure2),
   },
   shader = [[float main(PS_IN pin) {
     float r = 0;
@@ -400,9 +411,43 @@ local function configureAutoExposure(passParams, params, finalExposure, limited)
   end
 end
 
+local virtualMirrorParams = {
+  defines = {
+    FEATURE_USE_GLARE = ScriptSettings.POSTPROCESSING.VIRTUAL_MIRROR_GLARE and 1 or 0
+  },
+  values = {
+    gGammaFixBrightnessOffset = 0,
+    gExposure = 1,
+    gGamma = 1,
+    gMappingFactor = 32,
+    gMappingData = vec4(),
+    gMatHDR = mat4x4(),
+    gMatLDR = mat4x4(),
+  },
+  shader = 'shaders/pp_virtual_mirror.fx',
+  compileValuesMask = '{ FEATURE_? }',
+  cacheKey = 0,
+  directValuesExchange = true,
+}
+
 local finalExposure = 1
 local lastBrightnessMult = -1
-ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize)
+
+_G.getFinalExposure = function ()
+  return finalExposure
+end
+
+ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize)
+  if Sim.isVirtualMirrorActive then
+    virtualMirrorParams.values.gGammaFixBrightnessOffset = 0.45 / GammaFixBrightnessOffset
+    virtualMirrorParams.values.gMatHDR:set(ac.getPostProcessingHDRColorMatrix())
+    virtualMirrorParams.values.gMatHDR:transposeSelf() -- with `directValuesExchange` we need to transpose matrices manually (without it, CSP would do it automatically)
+    virtualMirrorParams.values.gMatLDR:set(ac.getPostProcessingLDRColorMatrix())
+    virtualMirrorParams.values.gMatLDR:transposeSelf()
+    configureAutoExposure(virtualMirrorParams, params, finalExposure)
+    ac.overrideVirtualMirrorShader(virtualMirrorParams)
+  end
+
   -- if mainPass then
   --   ac.debug('exposure', exposure)
   --   ac.debug('autoExposureTarget', params.autoExposureTarget)
@@ -428,7 +473,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
     params.vignetteStrength = 0
   end
 
-  if updateExponent and mainPass then
+  if updateExposure and mainPass then
     -- We could add separate autoexposure to non-main views if we’d want to, but we don’t
     if params.autoExposureEnabled then
       aePass1.values.gGammaFixBrightnessOffset = UseGammaFix and 0.45 / GammaFixBrightnessOffset or 1
@@ -485,7 +530,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
         textures = {
           txInput = 'dynamic::pp::hdr',
           ['txDepth.1'] = 'dynamic::pp::depth',
-          txDOF = data.dofPrepared,
+          txDOF = tostring(data.dofPrepared),
         },
         values = {
           focusPoint = 0,
@@ -497,7 +542,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
       }
     end
     data.useDof = useDof
-    data.pass2Params.textures.txInput = useDof and data.dofOutput or 'dynamic::pp::hdr'
+    data.pass2Params.textures.txInput = useDof and tostring(data.dofOutput) or 'dynamic::pp::hdr'
   end
 
   if useDof then
@@ -514,7 +559,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
   data.pass2Params.values.gMatHDR:transposeSelf() -- with `directValuesExchange` we need to transpose matrices manually
 
   data.pass2Params.values.gMatLDR:set(ac.getPostProcessingLDRColorMatrix())
-  data.pass2Params.values.gMatLDR:transposeSelf() 
+  data.pass2Params.values.gMatLDR:transposeSelf()
 
   local ratioHalf = (rtSize.x / rtSize.y + 0.5) / 2
   data.pass2Params.values.gVignetteRatio:set(ratioHalf, 1 / ratioHalf)
@@ -524,7 +569,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
   local useGlare = params.glareEnabled and params.glareLuminance > 0 and params.glareQuality > 0
   data.pass2Params.values.FEATURE_USE_GLARE = useGlare
   if useGlare then
-    data.pass2Params.values.gGlareLuminance = params.glareLuminance * (UseGammaFix and 0.002 or 0.005)
+    data.pass2Params.values.gGlareLuminance = params.glareLuminance * (UseGammaFix and 0.002 or 0.005) * (CurrentConditions and 0.35 - CurrentConditions.clear / 5 + CurrentConditions.fog or 1)
     data.pass2Params.textures.txBlur2 = data.bloom(data.pass2Params.textures.txInput, params.glareQuality)
     data.pass2Params.textures.txDirty = ScriptSettings.POSTPROCESSING.LENS_DIRT > 0 and Sim.cameraMode ~= ac.CameraMode.Cockpit and 'res/dirt.jpg' or 'color::#000000'
   end
@@ -596,7 +641,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExponent, rtSize
           return col;
         }]]
       })
-      data.pass2Params.textures.txGrain = noise or 'dynamic::noise'
+      data.pass2Params.textures.txGrain = tostring(noise) or 'dynamic::noise'
     end
   end
   if useFilmGrain and not Sim.isMakingScreenshot then

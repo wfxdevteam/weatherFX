@@ -57,14 +57,14 @@ ac.setFogBacklitExponent(1)
 ac.setFogBacklitMultiplier(0)
 
 -- Ambient light
-ac.setAmbientColor(rgb(10, 10, 10))
+ac.setAmbientColor(rgb(3, 3, 3))
 ac.setWeatherFakeShadowOpacity(1)
 ac.setWeatherFakeShadowConcentration(0)
 ac.adjustTrackVAO(0.6, 0, 1)
 ac.adjustDynamicAOSamples(0.2, 0, 1)
 
 -- Directional light
-ac.setLightColor(rgb(10, 10, 10))
+ac.setLightColor(rgb(3, 3, 3))
 ac.setLightDirection(vec3(0, 1, 0))
 ac.setSpecularColor(rgb(1, 1, 1))
 ac.setSunSpecularMultiplier(1)

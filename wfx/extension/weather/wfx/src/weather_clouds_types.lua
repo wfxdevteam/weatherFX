@@ -9,6 +9,8 @@ local CloudTextures = {
 
 -- Various helper functions for clouds
 local cloudutils = {}
+
+---@param cloud ac.SkyCloudV2
 function cloudutils.setPos(cloud, params)
   params = params or {}
   local height = params.height or (100 + math.random() * 200)
@@ -44,14 +46,17 @@ function cloudutils.setTexture(cloud, type)
   cloud.flipHorizontal = math.random() > 0.5
   return index
 end
+
+---@param cloud ac.SkyCloudV2
 function cloudutils.setProcNormalShare(cloud, globalShare, totalIntensity)
   globalShare = globalShare or 0.5
   totalIntensity = totalIntensity or 1
-  cloud.procNormalScale = vec2((1 - globalShare) * totalIntensity, globalShare * totalIntensity)
+  cloud.procNormalScale:set((1 - globalShare) * totalIntensity, globalShare * totalIntensity)
 end
 
 -- Different types of clouds
 CloudTypes = {}
+
 function CloudTypes.Basic(cloud, pos)
   cloudutils.setTexture(cloud, CloudTextures.Blurry)
   cloud.procMap = vec2(0.6, 0.85) + math.random() * 0.15
@@ -63,7 +68,9 @@ function CloudTypes.Basic(cloud, pos)
     procScale = 0.45
   })
 end
-function CloudTypes.Dynamic(cloud, pos)
+
+---@param cloud ac.SkyCloudV2
+function CloudTypes.Dynamic(cloud, pos, scale)
   local typeRandom = math.random()
   local fidelityRandom = math.random()
   local sizeRandom = math.random()
@@ -77,13 +84,13 @@ function CloudTypes.Dynamic(cloud, pos)
     cloudutils.setTexture(cloud, CloudTextures.Blurry)
   end
   cloud.occludeGodrays = true
-  cloud.procMap = vec2(0.6, 0.9)
+  cloud.procMap:set(0.6, 0.9)
   cloud.procSharpnessMult = math.lerp(0, 0.5, fidelityRandom)
   cloud.extraFidelity = math.lerp(0.7, 0.3, fidelityRandom)
   cloud.receiveShadowsOpacityMult = 1
   cloudutils.setProcNormalShare(cloud, math.lerp(1, 0.7, fidelityRandom), 1.5)
 
-  local cloudSize = math.lerp(2, 5, sizeRandom) * CloudSpawnScale
+  local cloudSize = math.lerp(2.5, 3.5, sizeRandom) * (scale or CloudSpawnScale)
   cloudutils.setPos(cloud, { 
     pos = pos, 
     size = cloudSize, 
@@ -96,67 +103,81 @@ function CloudTypes.Dynamic(cloud, pos)
   cloud.extras.extraFidelity = cloud.extraFidelity
   cloud.extras.lowerK = math.lerpInvSat(pos.y, DynCloudsMaxHeight, DynCloudsMinHeight)
 end
+
+---@param cloud ac.SkyCloudV2
+---@param mainCloud ac.SkyCloudV2
 function CloudTypes.Bottom(cloud, mainCloud)
   cloudutils.setTexture(cloud, CloudTextures.Bottoms)
   cloud.occludeGodrays = true
   cloud.horizontal = true
   cloud.horizontalHeading = math.random() * 360
   cloud.procScale:set(0.8, 0.8)
-  cloud.procMap = mainCloud.procMap * vec2(0.8, 1)
+  cloud.procMap:set(0.8, 1):mul(mainCloud.procMap)
   cloud.procSharpnessMult = mainCloud.procSharpnessMult
   cloud.extraFidelity = mainCloud.extraFidelity
-  local size = (mainCloud.size.x + mainCloud.size.y) / 2
+  local size = math.lerp(mainCloud.size.x, mainCloud.size.y, 0.25)
   cloud.size:set(size, size)
+  cloud.position:set(mainCloud.position)
   cloudutils.setProcNormalShare(cloud, 0.2, 1.8)
   cloud.material = CloudMaterials.Bottom
   cloud.receiveShadowsOpacityMult = mainCloud.receiveShadowsOpacityMult
 end
-function CloudTypes.Hovering(cloud, pos)
+
+---@param cloud ac.SkyCloudV2
+function CloudTypes.Hovering(cloud, pos, scale)
   cloudutils.setTexture(cloud, CloudTextures.Hovering)
-  cloud.procMap = vec2(0.5, 0.9) + math.random() * 0.15
+  cloud.procMap = vec2(0.1, 0.9) + math.random() * 0.15
   cloud.procSharpnessMult = 0
-  cloud.extraFidelity = 0.6
+  cloud.extraFidelity = 0
   cloudutils.setProcNormalShare(cloud, 0.2, 2)
   cloudutils.setPos(cloud, { 
     pos = pos, 
     horizontal = true,
-    size = math.lerp(8, 12, math.random()) * CloudSpawnScale, 
-    procScale = 0.2 / CloudSpawnScale
+    size = math.lerp(8, 12, math.random()) * (scale or CloudSpawnScale), 
+    procScale = 0.1 / (scale or CloudSpawnScale)
   })
-  cloud.horizontalHeading = -1
+  cloud.horizontalHeading = math.random() * 180
   cloud.material = CloudMaterials.Hovering
+  cloud.extras.procMap = cloud.procMap:clone()
+  cloud.extras.procScale = cloud.procScale:clone()
   cloud.extras.extraFidelity = cloud.extraFidelity
-  cloud.opacity = cloud.opacity * 0.5
+  cloud.opacity = cloud.opacity * 0.25
+  cloud.receiveShadowsOpacityMult = 0
 end
-function CloudTypes.Spread(cloud, pos)
+
+---@param cloud ac.SkyCloudV2
+function CloudTypes.Spread(cloud, pos, scale)
   cloudutils.setTexture(cloud, CloudTextures.Spread)
   cloud.procMap = vec2(0.4, 1)
   cloud.procSharpnessMult = 0
   cloud.extraFidelity = 1
   cloudutils.setProcNormalShare(cloud, 0.2)
-  local isSpread = math.random() > 0.5
   cloudutils.setPos(cloud, { 
     pos = pos, 
     horizontal = true,
-    size = math.lerp(4, 6, math.random()) * CloudSpawnScale, 
-    procScale = 0.1 / CloudSpawnScale,
-    aspectRatio = 0.33
+    size = math.lerp(4, 6, math.random()) * (scale or CloudSpawnScale), 
+    procScale = 0.1 / (scale or CloudSpawnScale),
+    aspectRatio = 0.8
   })
-  cloud.horizontalHeading = -1
+  cloud.horizontalHeading = math.random() * 180
   cloud.material = CloudMaterials.Spread
   cloud.procScale:mul(vec2(1, 4))
-  cloud.opacity = math.lerp(0.15, 0.35, math.random())
+  cloud.opacity = math.lerp(0.05, 0.15, math.random())
   cloud.extras.extraFidelity = cloud.extraFidelity
+  cloud.receiveShadowsOpacityMult = 0
 end
+
+---@param cloud ac.SkyCloudV2
 function CloudTypes.Low(cloud, pos, distance)
+  -- distance is 1 for further layer, 0 for nearer layer
   local index = cloudutils.setTexture(cloud, CloudTextures.Flat)
-  local heightFixes = { 0, 4, -10 }
+  local heightFixes = { 0, 0, -7 }
   cloud.occludeGodrays = true
-  cloud.procMap = vec2(0.65, 0.95)
-  cloud.procSharpnessMult = math.random() * 0.5
-  cloud.extraFidelity = 1.2
+  cloud.procMap = vec2(0.6, 0.9)
+  cloud.procSharpnessMult = math.random() * 0.2
+  cloud.extraFidelity = 1.4 + 0.4 * distance
   cloud.color = rgb(1, 1, 1)
-  cloud.opacity = 0.8
+  cloud.opacity = math.lerp(0.8, 0.3, distance)
   -- cloud.fogMultiplier = 5
   cloud.orderBy = 1e12 + distance * 1e10
   cloud.extras.opacity = cloud.opacity
@@ -165,14 +186,16 @@ function CloudTypes.Low(cloud, pos, distance)
   cloud.extras.procMap = cloud.procMap:clone()
   cloudutils.setProcNormalShare(cloud, 0.2, 2)
   cloudutils.setPos(cloud, { 
-    pos = pos, 
-    height = CalculateHorizonCloudYCoordinate(pos:clone():normalize()) - 5 * distance + (heightFixes[index + 1] or 0), 
-    distance = 50 + distance, 
-    size = 1.3, 
-    aspectRatio = 0.3
+    pos = pos,
+    height = 19 - 3 * distance + (heightFixes[index + 1] or 0), 
+    distance = 50 + distance,
+    size = 1.5,
+    aspectRatio = 0.15
   })
-  cloud.receiveShadowsOpacityMult = 0
+  cloud.receiveShadowsOpacityMult = 1
 end
+
+---@param cloud ac.SkyCloudV2
 function CloudTypes.Test(cloud, pos, distance)
   local index = cloudutils.setTexture(cloud, CloudTextures.Bottoms)
   cloud.occludeGodrays = true

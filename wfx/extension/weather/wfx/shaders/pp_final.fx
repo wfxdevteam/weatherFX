@@ -9,8 +9,11 @@ float __wfxfn_computeSunAura(float2 uv, float2 pos) {
   float ang = atan2(main.y, main.x);
   float distB = length(main); 
   if (USE_LINEAR_COLOR_SPACE) {
-    distB = pow(distB, 2) * 0.5;
+    distB = pow(distB, 4);
   }
+  #ifdef VR_MODE 
+    distB *= 100;
+  #endif
   return (16 + sin(__wfxfn_noise(sin(ang * 2 + pos.x) * 4.0 - cos(ang * 3 + pos.y)) * 16)) / (distB * 128 + 1);  
 }
 
@@ -125,15 +128,17 @@ float4 main(PS_IN pin){
       col.rgb += gSunColor * (sunAura * raysMask);
     }
 
-    float flareMult = saturate((1 - __wfxfn_dot2(sunPos)) * 2);
-    [branch]
-    if (flareMult > 0.01) {
-      float flareMask = flareMult * txMask.SampleLevel(samLinearBorder0, gSunPosition, 0);
-      if (flareMask > 0.01) {
-        float3 flare = __wfxfn_computeLensFlare(uvPos, sunPos);
-        col.rgb += gSunColor * flare * flareMask * lensDirtMult; 
+    #ifndef VR_MODE
+      float flareMult = saturate((1 - __wfxfn_dot2(sunPos)) * 2);
+      [branch]
+      if (flareMult > 0.01) {
+        float flareMask = flareMult * txMask.SampleLevel(samLinearBorder0, gSunPosition, 0);
+        if (flareMask > 0.01) {
+          float3 flare = __wfxfn_computeLensFlare(uvPos, sunPos);
+          col.rgb += gSunColor * flare * flareMask * lensDirtMult; 
+        }
       }
-    }
+    #endif
   }
 
   if (FEATURE_USE_LENS_DISTORTION) {
@@ -157,6 +162,8 @@ float4 main(PS_IN pin){
   //     col.g = 0.001;
   //   #endif
   // #endif
+
+  // return col * gGammaFixBrightnessOffset;
 
   if (USE_LINEAR_COLOR_SPACE) {
     col.rgb = __wfxfn_toSrgb(col.rgb * gGammaFixBrightnessOffset);
@@ -187,5 +194,8 @@ float4 main(PS_IN pin){
   }
   
   col.w = 1;
-  return saturate(col) + pin.GetDithering();
+  if (FEATURE_USE_LDR) {
+    col.rgb = saturate(col.rgb) + pin.GetDithering(); 
+  }
+  return col;
 }

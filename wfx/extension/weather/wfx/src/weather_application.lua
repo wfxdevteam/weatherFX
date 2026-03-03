@@ -243,7 +243,7 @@ function ApplySky(dt)
     :set(math.lerp(1, 0.2, deepBlue), math.lerp(1, 0.8, math.max(horizonK * 0.5, deepBlue)), math.lerp(1, 1.6, deepBlue))
     :mul(CurrentConditions.tint)
     :scale(skyVisibility 
-      * (1 - math.smoothstep(realNightK) * 0.99)) -- TODO: verify compatibility, add variance to 0.99
+      * (1 - math.smoothstep(realNightK) * (UseGammaFix and 0.999 or 0.99)))
 
   -- Covering layer
   ac.calculateSkyColorNoGradientsTo(skyTopColor, vec3Up, false, false, false)
@@ -549,7 +549,7 @@ end
 function ApplySceneTweaks(dt)
   if UseGammaFix then
     local grassThrive = math.saturateN(Sim.ambientTemperature / 20) * Sim.weatherConditions.humidity
-    ac.configureGrassShading(0.1 * (1 + sunsetK), 0.03 * (1 + sunsetK), grassThrive * 2, 0.25 + grassThrive)
+    ac.configureGrassShading(0.07 * (1 + sunsetK), 0.03 * (1 + sunsetK), grassThrive * 2, 0.25 + grassThrive)
   else
     ac.configureGrassShading(0, 0, 0, 0)
   end
@@ -576,7 +576,7 @@ function ApplyFog(dt)
     ac.setFogBlend(fogBlend)
 
     local atmosphereFade = math.lerp(ccFog, 1, math.max(CurrentConditions.clouds, 1 - CurrentConditions.clear))
-    ac.setFogAtmosphere(fogDistance * (1 - atmosphereFade * 0.5) / (22.5e3 * pressureMult) * (0.65 + Sim.weatherConditions.humidity * 0.7))
+    ac.setFogAtmosphere(fogDistance * (1 - atmosphereFade * 0.5) / (22.5e3 * pressureMult) * (0.45 + Sim.weatherConditions.humidity * 0.5))
 
     -- ac.debug('occlusionMult', occlusionMult)
     local distanceBoost = math.max(0, Sim.cameraPosition.y - GroundYAveraged) * math.lerp(4, 0.4, NightK)
@@ -591,7 +591,7 @@ function ApplyFog(dt)
     ac.setHorizonFogMultiplier(1, math.lerp(math.lerp(10, 4, horizonK), 0.5, horizonFog), fogRangeMult)
   
     ac.setFogBacklitExponent(12)
-    ac.setFogBacklitMultiplier(math.lerp(4, 0.2, CurrentConditions.clouds))
+    ac.setFogBacklitMultiplier(math.lerp(4, 0.2, CurrentConditions.clouds) * (cameraOcclusion ^ 4))
   else
     ccFog = math.lerp(ccFog, 1, CityHaze * 0.5)
     ac.setFogColor(skyHorizonColor:scale(SkyBrightness))
@@ -765,10 +765,18 @@ local brightnessMult = 1
 function ApplyFakeExposure_postponed()
   if not UseGammaFix then return false end
 
-  local delta = math.abs(brightnessMult - BrightnessMultApplied)
-  if delta < 1e-5 then return false end
+  -- New implementation taking auto-exposure from post-processing into account
+  local currentExposure = _G.getFinalExposure and _G.getFinalExposure() or ac.getAutoExposure()
+  ac.setWhiteReferencePoint(0.4 / brightnessMult / math.pow(currentExposure, 2.2))
 
-  ac.adjustCubemapReprojectionBrightness(brightnessMult / BrightnessMultApplied)
+  local delta = math.abs(brightnessMult - BrightnessMultApplied)
+  if delta < 1e-5 then
+    ac.adjustCubemapReprojectionBrightness(1)
+    return false
+  end
+
+  local cubemapMult = BrightnessMultApplied <= 0 and 1 or brightnessMult / BrightnessMultApplied
+  ac.adjustCubemapReprojectionBrightness(cubemapMult)
 
   BrightnessMultApplied = brightnessMult
   ac.setBrightnessMult(GammaFixBrightnessOffset * brightnessMult)
@@ -778,7 +786,7 @@ function ApplyFakeExposure_postponed()
   ac.setSkyV2DitherScale(0)
 
   if ac.isPpActive() then
-    ppBrightnessCorrection.value = 1.6
+    ppBrightnessCorrection.value = 1
   end
 
   -- Lights can be pretty dark now
@@ -791,11 +799,9 @@ function ApplyFakeExposure_postponed()
   ac.setWeatherLightsMultiplier2((lightsMult / v1LightsMult * GammaFixBrightnessOffset) * brightnessMult)
   ac.setBaseAmbientColor(rgb.tmp():set(0.00002))
   ac.setEmissiveMultiplier(ScriptSettings.LINEAR_COLOR_SPACE.DIM_EMISSIVES and 0.07 or 2.5 / brightnessMult) -- how bright are emissives
-  ac.setTrueEmissiveMultiplier(1) -- how bright are extrafx emissives
+  ac.setTrueEmissiveMultiplier(3) -- how bright are extrafx emissives
   ac.setGlowBrightness(1) -- how bright are those distant emissive glows
   ac.setWeatherTrackLightsMultiplierThreshold(0.01)
-
-  ac.setWhiteReferencePoint(10 / brightnessMult) -- white ref point is always bright
 
   -- No need to boost reflections here (and fresnel gamma wouldn’t even work anyway)
   ac.setFresnelGamma(1)
@@ -972,6 +978,7 @@ CloudMaterials.Spread = createGenericCloudMaterial({
 local cloudMateralsList = {CloudMaterials.Main, CloudMaterials.Bottom, CloudMaterials.Hovering, CloudMaterials.Spread}
 local prevSunsetK = -1
 local prevCloudDensityK = -1
+local prevCloudClearK = -1
 
 -- Update cloud materials for chanding lighting conditions
 function UpdateCloudMaterials()
@@ -979,6 +986,7 @@ function UpdateCloudMaterials()
 
   local main = CloudMaterials.Main
   local ccCloudsDensity = CurrentConditions.cloudsDensity
+  local ccClear = CurrentConditions.clear
 
   if UseGammaFix then
     local densityMult = 1 - ccCloudsDensity * 0.8
@@ -988,12 +996,14 @@ function UpdateCloudMaterials()
     main.extraDownlit.r, main.extraDownlit.b = main.extraDownlit.r * 0.9, main.extraDownlit.b * 0.8
 
     if math.abs(prevCloudDensityK - ccCloudsDensity) > 0.001
+      or math.abs(prevCloudClearK - ccClear) > 0.001
       or math.abs(prevSunsetK - SunDir.y) > 0.001 then
       prevSunsetK = SunDir.y
       prevCloudDensityK = ccCloudsDensity
+      prevCloudClearK = ccClear
       for _, v in ipairs(cloudMateralsList) do
         v.baseColor:set(0.3 * densityMult)
-        v.ambientConcentration = math.lerp(0.25, 0.45, ccCloudsDensity)
+        v.ambientConcentration = math.lerp(0.25, 0.45, ccCloudsDensity) * (0.5 + 0.5 * ccClear)
         v.frontlitMultiplier = math.lerp(2.5, 1, horizonK) * densityMult
         v.frontlitDiffuseConcentration = math.lerp(0.5, 0.75, sunsetK)
         v.receiveShadowsOpacity = 0.9

@@ -37,7 +37,7 @@ end
 local texData = {}
 local auroraAmbientColor = rgb(0.3, 1, 0)
 local auroraTime = -math.random() * 1e6
-local temporalSmoothing = 0.05
+local temporalSmoothing = 0.1
 
 table.insert(OnResolutionChange, function ()
   table.clear(texData)
@@ -54,10 +54,10 @@ local function createPassData(uniqueKey)
       ui.ExtraCanvas(size * 0.5, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred base shape (2)' or nil)
     },
 
-    txHighNoise = ui.ExtraCanvas(size / 8, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: high shape' or nil),
+    txHighNoise = ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: high shape' or nil),
     txHighBlurred = {
-      ui.ExtraCanvas(size / 8, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (1)' or nil),
-      ui.ExtraCanvas(size / 8, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (2)' or nil)
+      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (1)' or nil),
+      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (2)' or nil)
     },
 
     gNoiseScale = vec2(0.02, 0.02 * size.y / size.x),
@@ -234,7 +234,7 @@ function UpdateAurora(dt)
   end
 
   auroraTime = auroraTime + dt
-  temporalSmoothing = os.preciseClock() < 0.3 and 0.5 or (dt < 0.5 and (dt < 0.05 and 0.05 or 0.1) or 0.5)
+  temporalSmoothing = os.preciseClock() < 0.3 and 0.5 or (dt < 0.5 and (dt < 0.05 and 0.1 or 0.2) or 0.5)
   AuroraIntensity = Overrides.aurora or computeAuroraIntensity(chance)
   AuroraIntensity = AuroraIntensity * (1 - SpaceLook)
   setAuroraActive(AuroraIntensity > 0)

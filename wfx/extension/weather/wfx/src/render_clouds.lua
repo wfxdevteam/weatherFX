@@ -22,7 +22,6 @@ if not ScriptSettings.EXTRA_EFFECTS.UPPER_CLOUDS then
   return
 end
 
-local intensity = 0
 local windOffset = vec2()
 local windMTg = 0
 
@@ -35,7 +34,6 @@ local renderFogParams = {
     txNoiseLr = 'rain_fx/puddles.dds',
   },
   values = {
-    gIntensity = intensity,
     gWindOffset = vec2(),
     gCloudsAmbientColor = rgb(),
     gCloudsSunColor = rgb(),
@@ -52,7 +50,6 @@ local renderFogParams = {
     gMaskShift = vec3(-9, -9, -9),
     gMaskBoost = vec3(0, 0, 0),
     gThickness = vec3(0, 0, 0),
-    gCloudsShadow = 0,
     gWindMix = 0,
   },
   defines = {
@@ -81,26 +78,24 @@ local function renderCloudLayers(passID)
   if lastUpdateFrame[key] ~= Sim.frame then
     lastUpdateFrame[key] = Sim.frame
 
-    local ccClouds, ccDensity = CurrentConditions.clouds, CurrentConditions.cloudsDensity
+    local ccClouds, ccDensity = CurrentConditions.clouds * CurrentConditions.clear * CloudsMult, CurrentConditions.cloudsDensity
     windOffset:addScaled(CurrentConditions.windDir, CurrentConditions.windSpeed * CloudsDT * 2)
-    renderFogParams.values.gIntensity = intensity
     renderFogParams.values.gWindOffset:set(windOffset)
     renderFogParams.values.gCloudsAmbientColor:set(CloudMaterials.Main.ambientColor)
     renderFogParams.values.gCloudsSunColor:set(CloudsLightColor):scale((1 - ccClouds * 0.8) * (1 - ccDensity))
     renderFogParams.values.gCloudsSunDirection:set(CloudsLightDirection)
     ac.fixHeadingSelf(renderFogParams.values.gCloudsSunDirection)
   
-    renderFogParams.values.gThickness.x = 0.2 * (5 * ccClouds / (1 + 4 * ccClouds)) * (1 + 4 * ccDensity)
+    renderFogParams.values.gThickness.x = 0.2 * (1.5 * ccClouds / (1 + 0.5 * ccClouds)) * (1 + 4 * ccDensity)
     renderFogParams.values.gMaskBoost.x = 2.5
     renderFogParams.values.gMaskShift.x = -renderFogParams.values.gMaskBoost.x * (1 - ccClouds * 0.15) ^ 8 + math.min(0, math.perlin(Sim.timestamp / 1.15e5) * 3 + 1.5)
-    renderFogParams.values.gThickness.y = 2 * ccClouds / (1 + ccClouds)
+    renderFogParams.values.gThickness.y = ccClouds
     renderFogParams.values.gMaskBoost.y = 2.5
     renderFogParams.values.gMaskShift.y = -renderFogParams.values.gMaskBoost.y * (1 - ccClouds ^ 0.3 * 0.4) + math.min(0, math.perlin(Sim.timestamp / 1.16e5) * 4 + 0.5)
-    renderFogParams.values.gThickness.z = 2 * ccClouds / (1 + ccClouds)
+    renderFogParams.values.gThickness.z = ccClouds
     renderFogParams.values.gMaskBoost.z = 1.5
     renderFogParams.values.gMaskShift.z = -renderFogParams.values.gMaskBoost.z * (1 - ccClouds ^ 0.3 * 0.3) + math.min(0, math.perlin(Sim.timestamp / 1.17e5) * 5 - 0.5)
-    renderFogParams.values.gCloudsShadow = ccClouds
-  
+
     if math.abs(renderFogParams.values.gWindMix - windMTg) > 0.001 then
       renderFogParams.values.gWindMix = math.saturateN(renderFogParams.values.gWindMix + math.sign(windMTg - renderFogParams.values.gWindMix) * Sim.dt * 0.1)
     else
@@ -114,14 +109,16 @@ local function renderCloudLayers(passID)
     end
   end
 
-  render.fullscreenPass(renderFogParams)
+  if renderFogParams.values.gThickness.y > 0.001 then
+    render.fullscreenPass(renderFogParams)
+  end
 end
 
 local subscribed ---@type fun()?
 local prevTimestamp = 0
 
 function UpdateCloudLayers(dt)
-  local needsCloudLayers = UseGammaFix and CurrentConditions.clouds > 0
+  local needsCloudLayers = UseGammaFix and CurrentConditions.clouds > 0 
   if math.abs(prevTimestamp - Sim.timestamp) > 600 then
     windOffset:set(math.random() * 1e4, math.random() * 1e4)
   end

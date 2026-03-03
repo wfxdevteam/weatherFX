@@ -124,6 +124,7 @@ float4 main(PS_IN pin) {
 
   mixed.w = saturate(mixed.w - 1 + saturate((dir.y - 0.01) * 50));
   mixed.rgb += pow(saturate(dot(dir, gCloudsSunDirection)), 3) * gCloudsSunColor * saturate(1 - mixed.w);
+  clip(mixed.w - 0.001);
 
   pin.PosC = skyPointL - gCameraPosition;
   return pin.ApplyFog(mixed);

@@ -41,7 +41,7 @@ function InitializeConsts(useGammaFix)
     AdaptationSpeed = 10
     SunColor = rgb(1, 1, 1)
     MoonColor = rgb(1, 1.5, 2)
-    LightPollutionBrightness = 0.002
+    LightPollutionBrightness = 0.003
   else    
     SunIntensity = 12 -- how bright sun is in general
     SunLightIntensity = UseLambertGammaFix and 0.7 or 1 -- brightness of sun light cast on the scene
@@ -61,16 +61,18 @@ InitializeConsts(ScriptSettings.LINEAR_COLOR_SPACE.ENABLED)
 
 CloudUseAtlas = true
 CloudSpawnScale = 0.5
-CloudCellSize = 2000
-CloudCellDistance = 6
-CloudDistanceShiftStart = 4000
-CloudDistanceShiftEnd = 10000
+CloudCellSize = 4000
+CloudCellDistance = 3
+
+CloudDistanceShiftStart = 7000
+CloudDistanceShiftEnd = 17000
+
 CloudFadeNearby = 1000
 DynCloudsMinHeight = 400
 DynCloudsMaxHeight = 1200
-DynCloudsDistantHeight = 250
+DynCloudsDistantHeight = 200
 HoveringMinHeight = 1200
 HoveringMaxHeight = 1600
 
-CloudShapeShiftingSpeed = 0.003
-CloudShapeMovingSpeed = 0.05
+CloudShapeShiftingSpeed = 0.005
+CloudShapeMovingSpeed = 0.5

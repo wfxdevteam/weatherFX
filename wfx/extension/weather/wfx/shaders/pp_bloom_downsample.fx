@@ -27,6 +27,7 @@ float4 main(PS_IN pin){
       if (x > limit) {
         s *= limit / x;
       }
+      if (s.r + s.g + s.b >= 0 ? false : true) s = 0; // nan protection
     #endif
     ret += s * cWeights[i];
   }

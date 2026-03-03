@@ -15,6 +15,11 @@ local lightPolData = ac.getTrackLightPollution()
 lightPolData.tint:clamp(rgb.colors.black, rgb.colors.white)
 local lightPolDensity = lightPolData.density
 
+require('shared/sim/events').onLightPollutionUpdate(function ()
+  lightPolData = ac.getTrackLightPollution()
+  lightPolData.tint:clamp(rgb.colors.black, rgb.colors.white)
+end)
+
 -- Light pollution relative to camera
 local lightPolPos = vec3()
 
@@ -37,13 +42,11 @@ local remoteLightPollution = rgb()
 function SetLightPollution(cloud)
   if NightK > 0 then
     local distance = math.horizontalDistance(cloud.position, lightPolPos) + math.max((cloud.position.y - 5000) * 10, 0)
-    local distanceK = math.saturate(lightPolData.radius / math.max(distance - lightPolData.radius, 1))
+    local distanceK = math.saturateN(lightPolData.radius / math.max(distance - lightPolData.radius, 1))
     cloud.extraDownlit:set(lightPolData.tint)
       :scale(math.max(lightPolDistanceK + distanceK * 0.5, distanceK) * NightK * lightPolDensity * LightPollutionBrightness * 0.25)
   else
-    cloud.extraDownlit.r = 0
-    cloud.extraDownlit.g = 0
-    cloud.extraDownlit.b = 0
+    cloud.extraDownlit:set(0, 0, 0)
   end
 end
 
@@ -52,21 +55,16 @@ function GetRemoteLightPollution()
   return remoteLightPollution
 end
 
--- Simple trick to reduce garbage for GC, having a single vector and reusing it
--- instead of recreating it each frame
-local cameraPosition = vec3()
-
 -- Update light pollution position, gradient, global variables
 function UpdateLightPollution()  
   lightPolDensity = Overrides.lightPollution or lightPolData.density
   if UseGammaFix then
     lightPolDensity = lightPolDensity ^ 0.45
   end
-  ac.getCameraPositionTo(cameraPosition)
 
   -- Could use `lightPolPos = lightPolData.position - cameraPosition`, but this way, there is no
   -- garbage generated
-  lightPolPos:set(lightPolData.position):sub(cameraPosition)
+  lightPolPos:set(lightPolData.position):sub(Sim.cameraPosition)
 
   -- Final brightness is scaled based on conditions
   local cc = CurrentConditions

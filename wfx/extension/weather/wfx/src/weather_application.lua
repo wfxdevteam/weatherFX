@@ -3,6 +3,9 @@
 -- cloud materials.
 --------
 
+local Context = require 'src/context'
+local ctx = Context.ctx
+
 CloudsLightDirection = vec3()
 CloudsLightColor = rgb()
 
@@ -25,7 +28,6 @@ Nova.registerModule('fog', {
 local sunsetK = 0  -- grows when sun is at sunset stage
 local horizonK = 0 -- grows when sun is near horizon
 local eclipseK = 0 -- starts growing when moon touches sun, 1 at total eclipse
-local lightBrightness = 1
 local belowHorizonCorrection = 0
 local initialSet = 3
 local cameraOcclusion = 1
@@ -64,14 +66,6 @@ skyHorizonAddition.sizeStart = 1.2
 skyHorizonAddition.direction = vec3(0, -1, 0)
 ac.addSkyExtraGradient(skyHorizonAddition)
 
--- Gradient to boost brightness towards horizon
-local cityHaze = ac.SkyExtraGradient()
-cityHaze.isAdditive = false
-cityHaze.sizeFull = 1
-cityHaze.sizeStart = 1.2
-cityHaze.exponent = 20
-cityHaze.direction = vec3(0, -1, 0)
-
 -- Gradient to darken zenith during solar eclipse
 local eclipseCover = ac.SkyExtraGradient()
 eclipseCover.isAdditive = false
@@ -105,18 +99,6 @@ local windSpeedSmoothed = -1
 local baseCityPollution = 0
 local totalPollution = 0
 local prevEclipseK = -1
-
--- Temporary, for debugging
-function OnGammaToggle()
-  if prevEclipseK > 0 then
-    ac.skyExtraGradients:erase(eclipseCover)
-  end
-  if CityHaze > 0 then
-    ac.skyExtraGradients:erase(cityHaze)
-  end
-  prevEclipseK = -1
-  CityHaze = -1
-end
 
 -- Updates sky color
 function ApplySky(dt)
@@ -470,8 +452,8 @@ function ApplyFog(dt)
     false, false
   )
 
-  local ccFog = FinalFog
-  local occlusionMult = math.lerpInvSat(cameraOcclusion, 0.1, 1) ^ 2
+  local ccFog = ctx.finalFog
+  local occlusionMult = math.lerpInvSat(ctx.cameraOcclusion, 0.1, 1) ^ 2
 
   --
   -- write to nova
@@ -481,7 +463,7 @@ function ApplyFog(dt)
   local pressureMult = 101325 / Sim.weatherConditions.pressure
   local fogBlend = math.lerpInvSat(ac.getAltitude(), 10e3, 5e3)
   local fogDistance =
-      math.lerp(28.58e3 * pressureMult * (1 - Sim.weatherConditions.humidity * 0.6), 1e3, totalPollution)
+      math.lerp(28.58e3 * pressureMult * (1 - Sim.weatherConditions.humidity * 0.6), 1e3, ctx.totalPollution)
       * math.lerp(1, 0.1, math.lerp((1 - CurrentConditions.clear) * 0.5, 1, ccFog))
 
   Nova.state.fog.distance = fogDistance
@@ -494,11 +476,11 @@ function ApplyFog(dt)
       * (1 - atmosphereFade * 0.5) / (22.5e3 * pressureMult)
       * (0.45 + Sim.weatherConditions.humidity * 0.5)
 
-  local distanceBoost = math.max(0, Sim.cameraPosition.y - GroundYAveraged) * math.lerp(4, 0.4, NightK)
+  local distanceBoost = math.max(0, Sim.cameraPosition.y - GroundYAveraged) * math.lerp(4, 0.4, ctx.nightK)
   secondaryFogColor
       :set(ambientDistantColor)
-      :addScaled(lightColor, lightDir.y):scale(1 - NightK)
-      :addScaled(skyHorizonColor, NightK)
+      :addScaled(lightColor, lightDir.y):scale(1 - ctx.nightK)
+      :addScaled(skyHorizonColor, ctx.nightK)
       :scale((0.05 + 0.95 * occlusionMult) * 2)
 
   --[[
@@ -506,7 +488,7 @@ function ApplyFog(dt)
   ]]
   ac.setNearbyFog(
     secondaryFogColor,
-    math.lerp(math.lerp(5e3, 1e3, NightK), math.lerp(50, 30, NightK), ccFog) + distanceBoost,
+    math.lerp(math.lerp(5e3, 1e3, ctx.nightK), math.lerp(50, 30, ctx.nightK), ccFog) + distanceBoost,
     math.lerp(-20, -10, ccFog),
     fogBlend * math.min(1, 1.2 * ccFog / (0.1 + ccFog)),
     math.lerp(0.9, 1.1, fogNoise:get(Sim.cameraPosition)) * (1 + ccFog ^ 2)
@@ -518,14 +500,14 @@ function ApplyFog(dt)
   TODO: composite call, needs tuple/struct type support in nova
   ]]
   ac.setHorizonFogMultiplier(
-    1, math.lerp(math.lerp(10, 4, horizonK), 0.5, horizonFog),
-    fogRangeMult
+    1, math.lerp(math.lerp(10, 4, ctx.horizonK), 0.5, horizonFog),
+    ctx.fogRangeMult
   )
 
   Nova.state.fog.backlitExp = 12
   Nova.state.fog.backlitMult =
       math.lerp(4, 0.2, CurrentConditions.clouds)
-      * (cameraOcclusion ^ 4)
+      * (ctx.cameraOcclusion ^ 4)
 end
 
 -- Calculates heat factor for wobbling air above heated track and that wet road/mirage effect
@@ -538,7 +520,6 @@ function ApplyHeatFactor()
 end
 
 -- Updates stuff like moon, stars and planets
-local moonBaseColor = rgb()
 function ApplySkyFeatures()
   -- local brightness = ((0.25 / math.max(lightBrightness, 0.05)) ^ 2) * LightPollutionSkyFeaturesMult
   --   * (CurrentConditions.clear ^ 4) * 0.1

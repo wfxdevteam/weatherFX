@@ -47,7 +47,6 @@ AuroraIntensity = 0
 SunDir = vec3(0, 1, 0)
 MoonDir = vec3(0, 1, 0)
 GodraysColor = rgb()
-CityHaze = 0
 FinalFog = 0
 SpaceLook = 0    -- turns from 0 to 1 as camera gets higher switching to space look of the Earth
 CloudsMult = 0   -- turns to 0 at 4 km to hide clouds
@@ -310,18 +309,6 @@ function script.update(dt)
   local task
   if MEASURE_PERFORMANCE then task = runFrame('prepare') end
 
-  local curGammaFix = Overrides.gamma ~= false
-  if Sim.currentVAOMode == ac.VAODebugMode.VAOOnly or Sim.currentVAOMode == ac.VAODebugMode.ShowNormals then
-    curGammaFix = false
-  end
-  if UseGammaFix ~= curGammaFix then
-    InitializeConsts(curGammaFix)
-    OnGammaToggle()
-    ForceRapidUpdates = ForceRapidUpdates + 1
-    setTimeout(function()
-      ForceRapidUpdates = ForceRapidUpdates - 1
-    end, 0.1)
-  end
 
   -- This value is time passed in seconds (as dt), but taking into account pause, slow
   -- motion or fast forward, but not time scale in conditions
@@ -437,9 +424,6 @@ function script.update(dt)
   if MEASURE_PERFORMANCE then task:done() end
 
   Nova.flush()
-  if Nova._flushCount > 0 then
-    ac.debug('Nova flush', Nova._flushCount)
-  end
 end
 
 if ScriptSettings.POSTPROCESSING.LIGHTWEIGHT_REPLACEMENT then

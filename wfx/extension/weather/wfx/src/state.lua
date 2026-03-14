@@ -119,10 +119,8 @@ function nova.flush()
   end
 
   nova._flushCount = count
-  if count > 0 then
-    --[[monitor how many ffi calls happen per frame]]
-    ac.debug('Nova FFI calls/frame', count)
-  end
+  --[[monitor how many ffi calls happen per frame]]
+  ac.debug('Nova FFI calls/frame', count)
 end
 
 return nova

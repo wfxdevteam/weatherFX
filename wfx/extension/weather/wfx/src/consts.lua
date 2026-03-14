@@ -2,62 +2,43 @@
 -- Some general constant values, should not be changed real-time.
 --------
 
-TimelapsyCloudSpeed = true -- change to false to stop clouds from moving all fast if time goes faster
-SmoothTransition = true -- smooth transition between weather types (even if change was sudden)
+TimelapsyCloudSpeed = true      -- change to false to stop clouds from moving all fast if time goes faster
+SmoothTransition = true         -- smooth transition between weather types (even if change was sudden)
 BlurShadowsWhenSunIsLow = false -- reduce shadows resolution for when sun is low
-BlurShadowsWithFog = true -- reduce shadows resolution with thick fog
-UseLambertGammaFix = true -- fixes darker surfaces when sun is low
+BlurShadowsWithFog = true       -- reduce shadows resolution with thick fog
+UseLambertGammaFix = true       -- fixes darker surfaces when sun is low
 
-SunRaysCustom = false -- use fully custom sun ray parameters instead of SunRaysIntensity
-SunRaysIntensity = 0.02 -- some good PP-filters expode with sun rays at full strength for some reason
+SunRaysCustom = false           -- use fully custom sun ray parameters instead of SunRaysIntensity
+SunRaysIntensity = 0.02         -- some good PP-filters expode with sun rays at full strength for some reason
 
-UseGammaFix = false
 GammaFixBrightnessOffset = 0.01
 GammaFixLightsDivisor = 100
 
 SceneBrightnessMultNoPP = 2  -- without post-processing active: brightness multiplier for the whole scene
-SceneBrightnessMultPP = 3  -- with post-processing active: brightness multiplier for the scene (in most cases, gets compensated by auto-exposure)
+SceneBrightnessMultPP = 3    -- with post-processing active: brightness multiplier for the scene (in most cases, gets compensated by auto-exposure)
 FilterBrightnessMultPP = 1.0 -- with post-processing active: brightness adjustment applied after auto-exposure
 
-function InitializeConsts(useGammaFix)
-  ac.useLinearColorSpace(useGammaFix, GammaFixLightsDivisor)
+function InitializeConsts()
+  ac.useLinearColorSpace(true, GammaFixLightsDivisor)
   ac.setWeatherLightsMultiplier(1)
   ac.setWeatherLightsMultiplier2(1)
-  ac.setWeatherLightsRangeFactor(useGammaFix and 1 or 0.5)
-  ac.setWeatherBouncedLightMultiplier(rgb.new(useGammaFix and 0.45 or 0.35))
-  UseGammaFix = useGammaFix
+  ac.setWeatherLightsRangeFactor(1)
+  ac.setWeatherBouncedLightMultiplier(rgb.new(0.45))
 
-  for _, v in ipairs(OnGammaFixChange) do v() end
-  collectgarbage('collect')
-  
-  if useGammaFix then    
-    SunIntensity = 12
-    SunLightIntensity = 1
-    AmbientLightIntensity = 5
-    FogBacklitIntensity = 1
-    MoonLightMult = 0.005
-    SkyBrightness = 1
-    
-    AdaptationSpeed = 10
-    SunColor = rgb(1, 1, 1)
-    MoonColor = rgb(1, 1.5, 2)
-    LightPollutionBrightness = 0.003
-  else    
-    SunIntensity = 12 -- how bright sun is in general
-    SunLightIntensity = UseLambertGammaFix and 0.7 or 1 -- brightness of sun light cast on the scene
-    AmbientLightIntensity = 10 -- brightness of ambient light on the scene
-    FogBacklitIntensity = 2 -- brightness of fog backlit
-    MoonLightMult = 0.5 -- how bright is moon light
-    SkyBrightness = 0.5 -- sky brightness multiplier
-    
-    AdaptationSpeed = 10
-    SunColor = rgb(1, 0.95, 0.9)
-    MoonColor = rgb(0.6, 1.2, 2):scale(1.5)
-    LightPollutionBrightness = 0.1
-  end
+  SunIntensity = 12
+  SunLightIntensity = 1
+  AmbientLightIntensity = 5
+  FogBacklitIntensity = 1
+  MoonLightMult = 0.005
+  SkyBrightness = 1
+
+  AdaptationSpeed = 10
+  SunColor = rgb(1, 1, 1)
+  MoonColor = rgb(1, 1.5, 2)
+  LightPollutionBrightness = 0.003
 end
 
-InitializeConsts(ScriptSettings.LINEAR_COLOR_SPACE.ENABLED)
+InitializeConsts()
 
 CloudUseAtlas = true
 CloudSpawnScale = 0.5

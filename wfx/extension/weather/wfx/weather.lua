@@ -154,24 +154,27 @@ if ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE then
 end
 
 Nova = require 'src/state'
-Nova.init()
 
 require 'src/consts'               -- some general constant values
 require 'src/utils'                -- helpful functions
 require 'src/conditions_converter' -- thing to turn conditions (esp. weather type) info something usable: a few easy to use numbers
-require 'src/weather_application'  -- most of weather stuff happens here
-require 'src/light_pollution'      -- adds a sky gradient for light pollution and a few global variables like light pollution intensity
-require 'src/weather_clouds'       -- clouds operating in chunks
-require 'src/audio'                -- audio
-require 'src/render'               -- render core
+local Context = require 'src/context'
+local ctx = Context.ctx
+require 'src/weather_application' -- most of weather stuff happens here
+require 'src/light_pollution'     -- adds a sky gradient for light pollution and a few global variables like light pollution intensity
+require 'src/weather_clouds'      -- clouds operating in chunks
+require 'src/audio'               -- audio
+require 'src/render'              -- render core
 
-require 'src/render_aurora'        -- auroras
-require 'src/render_rain'          -- rain haze
-require 'src/render_fog'           -- fog covering tops of high buildings in foggy conditions
-require 'src/render_eclipse'       -- glare around sun during eclipse
-require 'src/render_lightning'     -- simple bolt-like visual for lightnings
-require 'src/render_clouds'        -- upper clouds layer
-require 'src/render_meteor'        -- falling stars
+require 'src/render_aurora'       -- auroras
+require 'src/render_rain'         -- rain haze
+require 'src/render_fog'          -- fog covering tops of high buildings in foggy conditions
+require 'src/render_eclipse'      -- glare around sun during eclipse
+require 'src/render_lightning'    -- simple bolt-like visual for lightnings
+require 'src/render_clouds'       -- upper clouds layer
+require 'src/render_meteor'       -- falling stars
+
+Nova.init()
 
 -- Use asyncronous textures loading for faster loading
 ac.setAsyncTextureLoading(true)
@@ -327,6 +330,23 @@ function script.update(dt)
   -- Clouds operate on actual passed time
   CloudsDT = TimelapsyCloudSpeed and getCloudsDeltaT(dt, gameDT) or gameDT
 
+  --[[
+  !!: bridge - keep globals in sync until all modules read from ctx directly.
+  context also computes values that are currently duplicated as locals in ApplySky
+  (sunsetK, horizonK, eclipseK, totalPollution, cameraOcclusion, fogRangeMult, etc).
+  that duplication is intentional: when a function is migrated to read from ctx,
+  remove its corresponding local computation from ApplySky at the same time.
+  TODO: once all consumers read from ctx delete this bridge and the globals entirely.
+  ]]
+  Context.build(dt, Sim, CurrentConditions)
+  NightK = ctx.nightK
+  FinalFog = ctx.finalFog
+  SpaceLook = ctx.spaceLook
+  CloudsMult = ctx.cloudsMult
+  EclipseFullK = ctx.eclipseFullK
+  SunDir:set(ctx.sunDir)
+  MoonDir:set(ctx.moonDir)
+
   -- If sun moved too much, have to force update
   ac.getSunDirectionTo(currentSunDir)
   if Sim.cameraJumped then
@@ -417,6 +437,9 @@ function script.update(dt)
   if MEASURE_PERFORMANCE then task:done() end
 
   Nova.flush()
+  if Nova._flushCount > 0 then
+    ac.debug('Nova flush', Nova._flushCount)
+  end
 end
 
 if ScriptSettings.POSTPROCESSING.LIGHTWEIGHT_REPLACEMENT then

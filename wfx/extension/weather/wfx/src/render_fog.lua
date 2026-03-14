@@ -17,8 +17,14 @@
   pronounced for most objects.
 ]]
 
+
+
+--[[
+in terms of nova, this will stay as is until we decide to change how the fog functions
+]]
+
 if not ScriptSettings.EXTRA_EFFECTS.FOG_ABOVE then
-  UpdateAboveFog = function (dt) end
+  UpdateAboveFog = function(dt) end
   return
 end
 
@@ -26,7 +32,7 @@ local intensity = 0
 local renderFogParams = {
   blendMode = render.BlendMode.AlphaBlend,
   depthMode = render.DepthMode.ReadOnly,
-  depth = 40,  -- fullscreen pass applies to areas further than 40 meters from camera, to improve performance
+  depth = 40, -- fullscreen pass applies to areas further than 40 meters from camera, to improve performance
   shader = 'shaders/fog.fx',
   values = {
     gIntensity = intensity
@@ -44,7 +50,7 @@ local subscribed ---@type fun()?
 local needsHighFogEffect = nil
 
 function UpdateAboveFog(dt)
-  intensity = math.lerpInvSat(FinalFog, 0.8, 1) 
+  intensity = math.lerpInvSat(FinalFog, 0.8, 1)
   if intensity == 0 then
     if subscribed then
       subscribed()
@@ -56,7 +62,8 @@ function UpdateAboveFog(dt)
   if needsHighFogEffect == nil then
     -- Activating effect only if there is some high enough static geometry
     local startingPoint = ac.getCar(0).pitTransform.position.y
-    local _, aabbMax = ac.findMeshes('{ static:yes & alphaBlend:no & transparent:no & ! lodOut:0 & ! largerThan:500 }'):getStaticAABB()
+    local _, aabbMax = ac.findMeshes('{ static:yes & alphaBlend:no & transparent:no & ! lodOut:0 & ! largerThan:500 }')
+        :getStaticAABB()
     needsHighFogEffect = aabbMax.y - startingPoint > 100
   end
 

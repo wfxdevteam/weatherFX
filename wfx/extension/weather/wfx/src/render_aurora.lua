@@ -29,8 +29,11 @@
     own `uniqueKey`. For each of those keys new set of textures is prepared.
 ]]
 
+local Context = require 'src/context'
+local ctx = Context.ctx
+
 if not ScriptSettings.EXTRA_EFFECTS.AURORAS then
-  UpdateAurora = function (dt) end
+  UpdateAurora = function(dt) end
   return
 end
 
@@ -39,7 +42,7 @@ local auroraAmbientColor = rgb(0.3, 1, 0)
 local auroraTime = -math.random() * 1e6
 local temporalSmoothing = 0.1
 
-table.insert(OnResolutionChange, function ()
+table.insert(OnResolutionChange, function()
   table.clear(texData)
 end)
 
@@ -48,16 +51,22 @@ local function createPassData(uniqueKey)
   local mainFrame = uniqueKey == 100
   -- ac.debug('aur key:'..tostring(uniqueKey), size)
   return {
-    txBaseNoise = ui.ExtraCanvas(size * 0.7, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: base shape' or nil),
+    txBaseNoise = ui.ExtraCanvas(size * 0.7, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: base shape' or
+      nil),
     txBaseBlurred = {
-      ui.ExtraCanvas(size * 0.5, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred base shape (1)' or nil),
-      ui.ExtraCanvas(size * 0.5, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred base shape (2)' or nil)
+      ui.ExtraCanvas(size * 0.5, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred base shape (1)' or
+        nil),
+      ui.ExtraCanvas(size * 0.5, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred base shape (2)' or
+        nil)
     },
 
-    txHighNoise = ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: high shape' or nil),
+    txHighNoise = ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: high shape' or
+      nil),
     txHighBlurred = {
-      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (1)' or nil),
-      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (2)' or nil)
+      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (1)' or
+        nil),
+      ui.ExtraCanvas(size / 4, 1, render.TextureFormat.R8.UNorm):setName(mainFrame and 'Aurora: blurred high shape (2)' or
+        nil)
     },
 
     gNoiseScale = vec2(0.02, 0.02 * size.y / size.x),
@@ -140,7 +149,7 @@ local function renderAurora(passID, frameIndex, uniqueKey)
       ['txHigh.1'] = tex.txHighBlurred[1],
     },
     values = {
-      gBrightnessMult = AuroraIntensity * (passID == render.PassID.CubeMap and 1.6 or 1) * (UseGammaFix and GammaFixBrightnessOffset * 3 or 1),
+      gBrightnessMult = AuroraIntensity * (passID == render.PassID.CubeMap and 1.6 or 1) * GammaFixBrightnessOffset * 3,
     },
     shader = 'shaders/aurora_apply.fx',
     cacheKey = 0
@@ -175,9 +184,9 @@ local currentTime = os.time()
 
 -- Updating list of auroras every three days
 if not ac.storage.solarStormsTime or currentTime > tonumber(ac.storage.solarStormsTime) + 3 * 24 * 60 * 60 then
-  web.get('https://acstuff.ru/j/auroras.txt', function (err, response)
+  web.get('https://acstuff.ru/j/auroras.txt', function(err, response)
     if err then return end
-    local newList = table.filter(response.body:split('\n'), function (s) return #s == 4 end)
+    local newList = table.filter(response.body:split('\n'), function(s) return #s == 4 end)
     if #newList > 4 then
       solarStorms = newList
       ac.storage.solarStorms = stringify(newList)
@@ -194,28 +203,30 @@ local function computeAuroraChance()
 
   local solarStorm = table.contains(solarStorms, os.dateGlobal('%y%m', sim.timestamp))
   local solarStormMult = solarStorm and 1 - math.abs(tonumber(os.dateGlobal('%d', sim.timestamp)) / 15 - 1) or 1
-  local bandHalfWidth = solarStorm and 20/2 or 5/2
+  local bandHalfWidth = solarStorm and 20 / 2 or 5 / 2
   local bandFullHalfWidth = bandHalfWidth / 2
   local bandCenter = 70
 
   return math.lerpInvSat(lattitude, bandCenter - bandHalfWidth, bandCenter - bandFullHalfWidth)
-    * math.lerpInvSat(lattitude, bandCenter + bandHalfWidth, bandCenter + bandFullHalfWidth)
-    * math.lerp(0.1, 1, solarStorm and solarStormMult or 0)
+      * math.lerpInvSat(lattitude, bandCenter + bandHalfWidth, bandCenter + bandFullHalfWidth)
+      * math.lerp(0.1, 1, solarStorm and solarStormMult or 0)
 end
 
 local function computeAuroraIntensity(chance)
   -- if true then return 1 end
-  
-  local diceBase = bit.bxor(328383, math.floor(sim.dayOfYear + sim.timeTotalSeconds / (24 * 60 * 60) + 0.5) + math.floor(lattitude * 1e4))
+
+  local diceBase = bit.bxor(328383,
+    math.floor(sim.dayOfYear + sim.timeTotalSeconds / (24 * 60 * 60) + 0.5) + math.floor(lattitude * 1e4))
   local dice = math.seededRandom(diceBase)
   if chance < dice * 0.2 then return 0 end
 
   local ret = chance < 0.1 and (dice * 1e3 % 1) or math.min((chance - dice * 0.2) * 4, 1)
-  ret = ret * math.saturateN(-SunDir.y * 10 - 0.5)          -- fade when sun is above horizon
-  ret = ret * math.lerp(1, 0.6, math.saturateN(MoonDir.y))  -- lower intensity if moon is high
-  ret = ret * math.max(0, 1 - LightPollutionValue * 4)      -- lower intensity if light pollution is present
-  ret = ret * math.max(0, 1 - CurrentConditions.clouds * 2) -- lower intensity if there are a lot of clouds (doesn’t look too good otherwise)
-  ret = ret * CurrentConditions.clear                       -- lower intensity if weather is not clear
+  ret = ret * math.saturateN(-SunDir.y * 10 - 0.5)         -- fade when sun is above horizon
+  ret = ret * math.lerp(1, 0.6, math.saturateN(MoonDir.y)) -- lower intensity if moon is high
+  ret = ret * math.max(0, 1 - LightPollutionValue * 4)     -- lower intensity if light pollution is present
+  ret = ret *
+      math.max(0, 1 - CurrentConditions.clouds * 2)        -- lower intensity if there are a lot of clouds (doesn’t look too good otherwise)
+  ret = ret * CurrentConditions.clear                      -- lower intensity if weather is not clear
   return ret
 end
 
@@ -236,11 +247,12 @@ function UpdateAurora(dt)
   auroraTime = auroraTime + dt
   temporalSmoothing = os.preciseClock() < 0.3 and 0.5 or (dt < 0.5 and (dt < 0.05 and 0.1 or 0.2) or 0.5)
   AuroraIntensity = Overrides.aurora or computeAuroraIntensity(chance)
-  AuroraIntensity = AuroraIntensity * (1 - SpaceLook)
+  AuroraIntensity = AuroraIntensity * (1 - ctx.spaceLook)
   setAuroraActive(AuroraIntensity > 0)
 
   if subscribed and auroraGlow then
-    local noise = math.sin(auroraTime * 0.1) * 0.45 + math.sin(auroraTime * 0.713) * 0.3 + math.sin(auroraTime * 1.303) * 0.25
-    auroraGlow.color:set(auroraAmbientColor):scale((1 + 0.3 * noise) * AuroraIntensity * (UseGammaFix and 0.001 or 0.15))
+    local noise = math.sin(auroraTime * 0.1) * 0.45 + math.sin(auroraTime * 0.713) * 0.3 +
+        math.sin(auroraTime * 1.303) * 0.25
+    auroraGlow.color:set(auroraAmbientColor):scale((1 + 0.3 * noise) * AuroraIntensity * 0.001)
   end
 end

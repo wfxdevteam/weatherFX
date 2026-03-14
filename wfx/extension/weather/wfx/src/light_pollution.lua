@@ -10,12 +10,15 @@ LightPollutionValue = 0
 LightPollutionSkyFeaturesMult = 1
 LightPollutionColor = rgb()
 
+local Context = require 'src/context'
+local ctx = Context.ctx
+
 -- Read light pollution
 local lightPolData = ac.getTrackLightPollution()
 lightPolData.tint:clamp(rgb.colors.black, rgb.colors.white)
 local lightPolDensity = lightPolData.density
 
-require('shared/sim/events').onLightPollutionUpdate(function ()
+require('shared/sim/events').onLightPollutionUpdate(function()
   lightPolData = ac.getTrackLightPollution()
   lightPolData.tint:clamp(rgb.colors.black, rgb.colors.white)
 end)
@@ -29,22 +32,23 @@ lightPolGradient.isAdditive = true
 lightPolGradient.exponent = 0.5
 ac.addSkyExtraGradient(lightPolGradient)
 
--- Distance coefficient: grows to 1 if camera is within light pollution area, slowly goes 
+-- Distance coefficient: grows to 1 if camera is within light pollution area, slowly goes
 -- down to 0 if camera gets further away
 local lightPolDistanceK = 0
 
--- Cached color for light pollution value for distant clouds (so it wouldn’t have to 
+-- Cached color for light pollution value for distant clouds (so it wouldn’t have to
 -- recalculate it each frame)
 local remoteLightPollution = rgb()
 
 -- This public function updates cloud downlit value depending on its position relative to light pollution
 -- (cloud position is set relative to camera, so it uses lightPolPos)
 function SetLightPollution(cloud)
-  if NightK > 0 then
+  if ctx.nightK > 0 then
     local distance = math.horizontalDistance(cloud.position, lightPolPos) + math.max((cloud.position.y - 5000) * 10, 0)
     local distanceK = math.saturateN(lightPolData.radius / math.max(distance - lightPolData.radius, 1))
     cloud.extraDownlit:set(lightPolData.tint)
-      :scale(math.max(lightPolDistanceK + distanceK * 0.5, distanceK) * NightK * lightPolDensity * LightPollutionBrightness * 0.25)
+        :scale(math.max(lightPolDistanceK + distanceK * 0.5, distanceK) * ctx.nightK * lightPolDensity *
+          LightPollutionBrightness * 0.25)
   else
     cloud.extraDownlit:set(0, 0, 0)
   end
@@ -56,11 +60,9 @@ function GetRemoteLightPollution()
 end
 
 -- Update light pollution position, gradient, global variables
-function UpdateLightPollution()  
+function UpdateLightPollution()
   lightPolDensity = Overrides.lightPollution or lightPolData.density
-  if UseGammaFix then
-    lightPolDensity = lightPolDensity ^ 0.45
-  end
+  lightPolDensity = lightPolDensity ^ 0.45
 
   -- Could use `lightPolPos = lightPolData.position - cameraPosition`, but this way, there is no
   -- garbage generated
@@ -68,7 +70,8 @@ function UpdateLightPollution()
 
   -- Final brightness is scaled based on conditions
   local cc = CurrentConditions
-  local polBrightness = LightPollutionBrightness * math.lerp(0.3, 1, math.lerp(math.lerp(0.1, 0.3, math.max(cc.clouds * 0.5, 1 - cc.clear)), 1, cc.fog))
+  local polBrightness = LightPollutionBrightness *
+      math.lerp(0.3, 1, math.lerp(math.lerp(0.1, 0.3, math.max(cc.clouds * 0.5, 1 - cc.clear)), 1, cc.fog))
 
   -- Distance from camera to pollution center
   local polDistance = #lightPolPos
@@ -80,16 +83,14 @@ function UpdateLightPollution()
   -- if distance is higher, it’ll slowly go down to zero
   local distanceK = math.saturateN(lightPolData.radius * polDistanceInv)
 
-  -- Set gradient color: use pollution tint scaled by density and brightness in settings, plus multiplied by distance 
+  -- Set gradient color: use pollution tint scaled by density and brightness in settings, plus multiplied by distance
   -- coefficient in 0.25 power
   lightPolGradient.color:set(lightPolData.tint):scale(lightPolDensity ^ 2)
-  if UseGammaFix then
-    lightPolGradient.color:pow(2.2)
-  end
+  lightPolGradient.color:pow(2.2)
   lightPolGradient.color:scale((distanceK ^ 0.25) * polBrightness)
 
   -- Calculating light pollution direction and size: for distant pollution (with lower distance coefficient),
-  -- gradient will be at the direction towards the pollution, but direction to closer gradient moves down 
+  -- gradient will be at the direction towards the pollution, but direction to closer gradient moves down
   -- below the horizon while pollution itself glows in size, covering more and more sky
   local lightPollutionDir = lightPolPos * polDistanceInv
   lightPolGradient.sizeFull = -1 + distanceK * 2
@@ -101,6 +102,6 @@ function UpdateLightPollution()
   LightPollutionValue = math.saturateN(lightPolDensity * distanceK)
   LightPollutionColor = lightPolGradient.color
   LightPollutionSkyFeaturesMult = 1 - LightPollutionValue * 0.9
-  remoteLightPollution:set(lightPolData.tint):scale(distanceK * NightK * lightPolDensity * polBrightness)
+  remoteLightPollution:set(lightPolData.tint):scale(distanceK * ctx.nightK * lightPolDensity * polBrightness)
   -- ac.debug('LightPollutionValue', LightPollutionValue)
 end

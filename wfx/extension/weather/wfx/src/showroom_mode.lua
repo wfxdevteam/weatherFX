@@ -83,13 +83,10 @@ ac.setWeatherTrackLightsMultiplierThreshold(0)
 ac.setReflectionEmissiveBoost(1)
 ac.setReflectionsBrightness(1)
 
-if ScriptSettings.LINEAR_COLOR_SPACE.ENABLED then
-  UseGammaFix = true
-  GammaFixBrightnessOffset = 1
-  ac.useLinearColorSpace(true, 100)
-  ac.setBrightnessMult(GammaFixBrightnessOffset * 0.015)
-  ac.setSkyV2Gamma(ac.SkyRegion.All, 1)
-end
+GammaFixBrightnessOffset = 1
+ac.useLinearColorSpace(true, 100)
+ac.setBrightnessMult(GammaFixBrightnessOffset * 0.015)
+ac.setSkyV2Gamma(ac.SkyRegion.All, 1)
 
 -- Optional override
 local weather = ac.connect({
@@ -146,8 +143,22 @@ local function syncOverride()
     ac.setSkyPlanetsBrightness(0)
     ac.setSkyMoonBrightness(0)
 
-    local adjNone = ac.SkyExtraGradient({ color = rgb(), isAdditive = false, sizeFull = 3, sizeStart = 3, direction = vec3(0, 1, 0) })
-    local adjColor = ac.SkyExtraGradient({ color = weather.backgroundColor, isAdditive = true, sizeFull = 3, sizeStart = 3, direction = vec3(0, 1, 0) })
+    local adjNone = ac.SkyExtraGradient({
+      color = rgb(),
+      isAdditive = false,
+      sizeFull = 3,
+      sizeStart = 3,
+      direction =
+          vec3(0, 1, 0)
+    })
+    local adjColor = ac.SkyExtraGradient({
+      color = weather.backgroundColor,
+      isAdditive = true,
+      sizeFull = 3,
+      sizeStart = 3,
+      direction =
+          vec3(0, 1, 0)
+    })
     ac.addSkyExtraGradient(adjNone)
     ac.addSkyExtraGradient(adjColor)
   end

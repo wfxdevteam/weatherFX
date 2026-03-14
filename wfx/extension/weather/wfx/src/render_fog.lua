@@ -17,11 +17,12 @@
   pronounced for most objects.
 ]]
 
-
-
 --[[
 in terms of nova, this will stay as is until we decide to change how the fog functions
 ]]
+
+local Context = require 'src/context'
+local ctx = Context.ctx
 
 if not ScriptSettings.EXTRA_EFFECTS.FOG_ABOVE then
   UpdateAboveFog = function(dt) end
@@ -50,7 +51,7 @@ local subscribed ---@type fun()?
 local needsHighFogEffect = nil
 
 function UpdateAboveFog(dt)
-  intensity = math.lerpInvSat(FinalFog, 0.8, 1)
+  intensity = math.lerpInvSat(ctx.finalFog, 0.8, 1)
   if intensity == 0 then
     if subscribed then
       subscribed()

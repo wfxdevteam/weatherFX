@@ -8,10 +8,6 @@ local MEASURE_PERFORMANCE = const(false)
 ---@type fun()[]
 OnResolutionChange = {}
 
----TODO: Remove once gamma becomes non-changing live.
----@type fun()[]
-OnGammaFixChange = {}
-
 ScriptSettings = ac.INIConfig.scriptSettings():mapConfig({
   LINEAR_COLOR_SPACE = {
     ENABLED = false,
@@ -73,7 +69,7 @@ if Sim.isOnlineRace then
   ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE = false
 elseif ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE then
   ui.onExclusiveHUD(function()
-    ui.drawText(UseGammaFix and '[ Linear color space ]' or '[ Gamma color space ]', vec2(8, 8))
+    ui.drawText('[ Linear color space ]', vec2(8, 8))
   end)
 end
 
@@ -96,10 +92,6 @@ if ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE then
     ui.beginGroup(-0.1)
     ui.pushItemWidth(-0.1)
     ui.pushFont(ui.Font.Small)
-    if ui.checkbox('Linear color space', Overrides.gamma) then
-      Overrides.gamma = not Overrides.gamma
-      BrightnessMultApplied = -1
-    end
 
     if ScriptSettings.POSTPROCESSING.LIGHTWEIGHT_REPLACEMENT then
       if ui.checkbox('Original YEBIS post-processing', Overrides.originalPostProcessing) then
@@ -109,7 +101,7 @@ if ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE then
 
     GammaFixBrightnessOffset = ui.slider('##gfbo', GammaFixBrightnessOffset, 1e-6, 10, 'Brightness offset: %.6f', 10)
     GammaFixLightsDivisor = ui.slider('##gfld', GammaFixLightsDivisor, 1e-3, 1e4, 'Lights divisor: %.6f', 10)
-    if ui.itemEdited() and UseGammaFix then
+    if ui.itemEdited() then
       ac.useLinearColorSpace(true, GammaFixLightsDivisor)
     end
 

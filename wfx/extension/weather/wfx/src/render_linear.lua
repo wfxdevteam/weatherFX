@@ -21,15 +21,13 @@ local function createPPData(resolution)
     }
   }
 end
-ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize)
-  if not UseGammaFix then -- TODO: Remove check when UseGammaFix will become a static thing, move it to weather.lua before including this file
-    -- return nil
-  end
-  local data = table.getOrCreate(buffersCache, (mainPass and 0 or 1e7) + rtSize.y * 10000 + rtSize.x, createPPData, rtSize)
+ac.onPostProcessing(function(params, exposure, mainPass, updateExposure, rtSize)
+  local data = table.getOrCreate(buffersCache, (mainPass and 0 or 1e7) + rtSize.y * 10000 + rtSize.x, createPPData,
+    rtSize)
   data.params.values.gBrightness = 0.45 / GammaFixBrightnessOffset
   data.canvas:updateWithShader(data.params)
   return data.canvas
 end)
-table.insert(OnResolutionChange, function ()
+table.insert(OnResolutionChange, function()
   table.clear(buffersCache)
 end)

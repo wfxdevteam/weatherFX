@@ -17,7 +17,7 @@
 
 local buffersCache = {}
 
-table.insert(OnResolutionChange, function ()
+table.insert(OnResolutionChange, function()
   table.clear(buffersCache)
 end)
 
@@ -27,10 +27,13 @@ local function bloomHelper(resolution)
   if steps < 2 then
     return function() return 'color::#000000' end
   end
-  local threshold1 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), inSize.y), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
-  local threshold2 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
+  local threshold1 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), inSize.y), 1, render.AntialiasingMode.None,
+    render.TextureFormat.R16.Float)
+  local threshold2 = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1,
+    render.AntialiasingMode.None, render.TextureFormat.R16.Float)
   local threshold2Key = tostring(threshold2)
-  local thresholdB = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1, render.AntialiasingMode.None, render.TextureFormat.R16.Float)
+  local thresholdB = ui.ExtraCanvas(vec2(math.ceil(inSize.x / 16), math.ceil(inSize.y / 16)), 1,
+    render.AntialiasingMode.None, render.TextureFormat.R16.Float)
   local thresholdPass1 = {
     textures = { txInput = '' },
     values = { gBrightnessMult = 1 },
@@ -57,7 +60,8 @@ local function bloomHelper(resolution)
       list[i] = {
         tex = ui.ExtraCanvas(resolution, 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float),
         pass1 = {
-          textures = i == 1 and { txInput = '', ['txLimit.1'] = tostring(thresholdB) } or { txInput = list[i - 1].texKey },
+          textures = i == 1 and { txInput = '', ['txLimit.1'] = tostring(thresholdB) } or
+              { txInput = list[i - 1].texKey },
           values = { gTexSizeInv = i == 1 and 1 / inSize or 1 / list[i - 1].tex:size() },
           defines = i == 1 and { PASS_INDEX = i } or {},
           cacheKey = i,
@@ -88,13 +92,16 @@ local function bloomHelper(resolution)
   local quality1
   local function implQualityLow(input)
     if not quality1 then
-      quality1 = { tex = ui.ExtraCanvas(list[2].tex:size(), 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float), pass = {
-        textures = { txInput = '' },
-        values = { gTexSizeInv = 1 / list[2].tex:size(), gLimit = 1 },
-        shader = 'shaders/pp_bloom_quality1.fx',
-        directValuesExchange = true,
-        async = true,
-      } }
+      quality1 = {
+        tex = ui.ExtraCanvas(list[2].tex:size(), 1, render.AntialiasingMode.None, render.TextureFormat.R11G11B10.Float),
+        pass = {
+          textures = { txInput = '' },
+          values = { gTexSizeInv = 1 / list[2].tex:size(), gLimit = 1 },
+          shader = 'shaders/pp_bloom_quality1.fx',
+          directValuesExchange = true,
+          async = true,
+        }
+      }
     end
     quality1.pass.textures.txInput = input
     quality1.pass.values.gLimit = GammaFixBrightnessOffset * 1600
@@ -115,8 +122,8 @@ local function bloomHelper(resolution)
     end
     if quality > 2 then
       thresholdPass1.textures.txInput = input
-      thresholdPass1.values.gBrightnessMult = UseGammaFix and 0.01 / GammaFixBrightnessOffset or 1
-      thresholdPass2.values.gBrightnessMult = UseGammaFix and GammaFixBrightnessOffset or 1
+      thresholdPass1.values.gBrightnessMult = 0.01 / GammaFixBrightnessOffset
+      thresholdPass2.values.gBrightnessMult = GammaFixBrightnessOffset
       threshold1:updateWithShader(thresholdPass1)
       threshold2:updateWithShader(thresholdPass2)
       thresholdB:gaussianBlurFrom(threshold2Key, 15)
@@ -130,7 +137,7 @@ local function bloomHelper(resolution)
     end
     return list[1].texKey
   end
-  return function (input, quality)
+  return function(input, quality)
     if quality == 1 then
       return implQualityLow(input)
     else
@@ -142,20 +149,20 @@ end
 ---@param resolution vec2
 local function createPPData(resolution)
   local bloom = bloomHelper(resolution)
-  local sunRaysFormat = ScriptSettings.LINEAR_COLOR_SPACE.ENABLED 
-    and render.TextureFormat.R16.Float 
-    or render.TextureFormat.R8.UNorm
+  local sunRaysFormat = ScriptSettings.LINEAR_COLOR_SPACE.ENABLED
+      and render.TextureFormat.R16.Float
+      or render.TextureFormat.R8.UNorm
   resolution = resolution:clone():scale(0.5)
   local skyMask = ui.ExtraCanvas(resolution, 1,
     render.AntialiasingMode.None, render.TextureFormat.R8.UNorm) --:setName('skyMask')
   local sunRays1 = ui.ExtraCanvas(resolution, 1,
-    render.AntialiasingMode.None, sunRaysFormat) --:setName('sunRays1')
+    render.AntialiasingMode.None, sunRaysFormat)                 --:setName('sunRays1')
   local sunRays2 = ui.ExtraCanvas(resolution, 1,
-    render.AntialiasingMode.None, sunRaysFormat) --:setName('sunRays2')
+    render.AntialiasingMode.None, sunRaysFormat)                 --:setName('sunRays2')
   return {
-    skyMask = skyMask, 
-    sunRays1 = sunRays1, 
-    sunRays2 = sunRays2, 
+    skyMask = skyMask,
+    sunRays1 = sunRays1,
+    sunRays2 = sunRays2,
     bloom = bloom,
     passSkyMaskParams = {
       async = true,
@@ -167,7 +174,7 @@ local function createPPData(resolution)
         gBrightnessMult = 0.65
       },
       shader = [[float4 main(PS_IN pin) {
-        return dot(txDepth.GatherRed(samLinearBorder0, pin.Tex) == 1, 0.25) 
+        return dot(txDepth.GatherRed(samLinearBorder0, pin.Tex) == 1, 0.25)
           * saturate(txHDR.SampleLevel(samLinearBorder0, pin.Tex, 0).b * gBrightnessMult - 0.5);
       }]]
     },
@@ -278,7 +285,7 @@ local function createPPData(resolution)
       shader = 'shaders/pp_final.fx'
     },
     useDof = false
-  } 
+  }
 end
 
 local aeMeasure1 = ui.ExtraCanvas(256, 8, render.TextureFormat.R16.Float)
@@ -287,10 +294,6 @@ local aeMeasure3 = ui.ExtraCanvas(4, 4, render.TextureFormat.R16.Float)
 local aeMeasured = 0
 local aeCurrent = tonumber(ac.load('wfx.base.ae')) or 1
 if not math.isfinite(aeCurrent) then aeCurrent = 1 end
-
-table.insert(OnGammaFixChange, function ()
-  aeCurrent = 1
-end)
 
 local aePass1 = {
   textures = {
@@ -395,19 +398,22 @@ local function configureAutoExposure(passParams, params, finalExposure, limited)
   local tonemappingFn = params.customTonemappingFunctionCode and ac.getCustomTonemappingFunctionCode() or nil
   if tonemappingFn ~= passParams.__prevCustomTonemappingFn then
     -- Wacky way to get custom tonemapping functions to work. If they use values named gSomething, it won’t work, but changes of collision should
-    -- be lower due to __wfxfn_ prefix used in shaders now. 
+    -- be lower due to __wfxfn_ prefix used in shaders now.
     -- It would be a lot more compatible to just run the code in a separate shader, but there is a lot of performance gain from doing most of post-processing
     -- in a single pass.
     passParams.__prevCustomTonemappingFn = tonemappingFn
-    passParams.defines.TONEMAP_FN_IMPL = tonemappingFn and tonemappingFn:reggsub([[//.+]], ''):reggsub([[\s+main\s*(?=\(float)]], ' __custom_tonemaping_main'):replace('\n', '\\\n') or nil
-    passParams.cacheKey = bit.bor(bit.band(passParams.cacheKey, bit.bnot(0xffff00)), tonemappingFn and bit.band(ac.checksumXXH(tonemappingFn), 0xffff00) or 0)
+    passParams.defines.TONEMAP_FN_IMPL = tonemappingFn and
+        tonemappingFn:reggsub([[//.+]], ''):reggsub([[\s+main\s*(?=\(float)]], ' __custom_tonemaping_main'):replace('\n',
+          '\\\n') or nil
+    passParams.cacheKey = bit.bor(bit.band(passParams.cacheKey, bit.bnot(0xffff00)),
+      tonemappingFn and bit.band(ac.checksumXXH(tonemappingFn), 0xffff00) or 0)
   end
   if not tonemappingFn then
     if passParams.defines.TONEMAP_FN ~= tonemap then
       passParams.defines.TONEMAP_FN = tonemap
       passParams.cacheKey = bit.bor(bit.band(passParams.cacheKey, bit.bnot(127)), tonemap)
       -- key = tonemap | (key & ~127)
-    end  
+    end
   end
 end
 
@@ -433,11 +439,11 @@ local virtualMirrorParams = {
 local finalExposure = 1
 local lastBrightnessMult = -1
 
-_G.getFinalExposure = function ()
+_G.getFinalExposure = function()
   return finalExposure
 end
 
-ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize)
+ac.onPostProcessing(function(params, exposure, mainPass, updateExposure, rtSize)
   if Sim.isVirtualMirrorActive then
     virtualMirrorParams.values.gGammaFixBrightnessOffset = 0.45 / GammaFixBrightnessOffset
     virtualMirrorParams.values.gMatHDR:set(ac.getPostProcessingHDRColorMatrix())
@@ -454,16 +460,14 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   --   ac.debug('tonemapExposure', params.tonemapExposure)
   -- end
   if mainPass and ScriptSettings.LINEAR_COLOR_SPACE.DEV_MODE and Overrides.originalPostProcessing then
-    if not UseGammaFix then
-      return
-    end
     local data = table.getOrCreate(buffersCache, 2e7 + rtSize.y * 10000 + rtSize.x, createDevPPData, rtSize)
     data.params.values.gBrightness = 0.45 / GammaFixBrightnessOffset
     data.canvas:updateWithShader(data.params)
     return data.canvas
   end
 
-  local data = table.getOrCreate(buffersCache, (mainPass and 0 or 1e7) + rtSize.y * 10000 + rtSize.x, createPPData, rtSize)
+  local data = table.getOrCreate(buffersCache, (mainPass and 0 or 1e7) + rtSize.y * 10000 + rtSize.x, createPPData,
+    rtSize)
   if Sim.isPreviewsGenerationMode then
     params.autoExposureEnabled = false
     params.godraysEnabled = false
@@ -476,7 +480,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   if updateExposure and mainPass then
     -- We could add separate autoexposure to non-main views if we’d want to, but we don’t
     if params.autoExposureEnabled then
-      aePass1.values.gGammaFixBrightnessOffset = UseGammaFix and 0.45 / GammaFixBrightnessOffset or 1
+      aePass1.values.gGammaFixBrightnessOffset = 0.45 / GammaFixBrightnessOffset
       aePass1.values.gAreaOffset:set(params.autoExposureAreaOffset)
       aePass1.values.gAreaSize:set(params.autoExposureAreaSize)
       configureAutoExposure(aePass1, params, 1, true)
@@ -491,10 +495,8 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
       -- end)
       if aeMeasured > 0 then
         local aeTarget = params.autoExposureTarget * exposure / aeMeasured
-        if UseGammaFix then
-          -- TODO: Find a better way?
-          aeTarget = aeTarget * (Sim.isFocusedOnInterior and 0.35 or 0.6)
-        end
+        -- TODO: Find a better way?
+        aeTarget = aeTarget * (Sim.isFocusedOnInterior and 0.35 or 0.6)
         aeTarget = math.clamp(aeTarget, params.autoExposureMin, params.autoExposureMax)
         if lastBrightnessMult ~= -1 and BrightnessMultApplied > 0 then
           aeCurrent = aeCurrent * lastBrightnessMult / BrightnessMultApplied
@@ -516,7 +518,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   if useDof ~= data.useDof then
     if not data.dofPrepared then
       data.dofPrepared = ui.ExtraCanvas(rtSize:clone():scale(0.5), 1, render.TextureFormat.R16G16B16A16.Float) --:setName('dofPrepared')
-      data.dofOutput = ui.ExtraCanvas(rtSize, 1, render.TextureFormat.R16G16B16A16.Float) --:setName('dofOutput')
+      data.dofOutput = ui.ExtraCanvas(rtSize, 1, render.TextureFormat.R16G16B16A16.Float)                      --:setName('dofOutput')
       data.passDofPrepare = {
         textures = {
           txInput = 'dynamic::pp::hdr',
@@ -548,7 +550,8 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   if useDof then
     local gNearPlane = params.cameraNearPlane
     local gFarPlane = params.cameraFarPlane
-    local focusPoint = (gFarPlane + gNearPlane - 2 * gNearPlane * gFarPlane / params.dofFocusDistance) / (gFarPlane - gNearPlane) / 2 + 0.5
+    local focusPoint = (gFarPlane + gNearPlane - 2 * gNearPlane * gFarPlane / params.dofFocusDistance) /
+        (gFarPlane - gNearPlane) / 2 + 0.5
     data.passDofProcess.values.focusPoint = focusPoint
     data.passDofProcess.values.focusScale = (1 + focusPoint * 5) * 6 / params.dofApertureFNumber
     data.dofPrepared:updateWithShader(data.passDofPrepare)
@@ -569,9 +572,11 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   local useGlare = params.glareEnabled and params.glareLuminance > 0 and params.glareQuality > 0
   data.pass2Params.values.FEATURE_USE_GLARE = useGlare
   if useGlare then
-    data.pass2Params.values.gGlareLuminance = params.glareLuminance * (UseGammaFix and 0.002 or 0.005) * (CurrentConditions and 0.35 - CurrentConditions.clear / 5 + CurrentConditions.fog or 1)
+    data.pass2Params.values.gGlareLuminance = params.glareLuminance * 0.002 *
+        (CurrentConditions and 0.35 - CurrentConditions.clear / 5 + CurrentConditions.fog or 1)
     data.pass2Params.textures.txBlur2 = data.bloom(data.pass2Params.textures.txInput, params.glareQuality)
-    data.pass2Params.textures.txDirty = ScriptSettings.POSTPROCESSING.LENS_DIRT > 0 and Sim.cameraMode ~= ac.CameraMode.Cockpit and 'res/dirt.jpg' or 'color::#000000'
+    data.pass2Params.textures.txDirty = ScriptSettings.POSTPROCESSING.LENS_DIRT > 0 and
+        Sim.cameraMode ~= ac.CameraMode.Cockpit and 'res/dirt.jpg' or 'color::#000000'
   end
 
   if params.vignetteStrength ~= data.pass2Params.values.gVignette then
@@ -595,19 +600,19 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   end
 
   local useSunRays = mainPass and params.godraysEnabled and params.godraysInCameraFustrum
-    and params.godraysColor:value() > 1 and not Sim.isTripleFSRActive
+      and params.godraysColor:value() > 1 and not Sim.isTripleFSRActive
   local sunRaysReady = false
   if useSunRays then
     data.passSun1Params.values.gSunPosition:set(params.godraysOrigin)
     data.passSun2Params.values.gSunPosition:set(params.godraysOrigin)
     data.passSun3Params.values.gSunPosition:set(params.godraysOrigin)
-    data.passSkyMaskParams.values.gBrightnessMult = UseGammaFix and 1 / GammaFixBrightnessOffset or 1
+    data.passSkyMaskParams.values.gBrightnessMult = 1 / GammaFixBrightnessOffset
     if data.skyMask:updateWithShader(data.passSkyMaskParams)
         and data.sunRays1:updateWithShader(data.passSun1Params)
         and data.sunRays2:updateWithShader(data.passSun2Params)
         and data.sunRays1:updateWithShader(data.passSun3Params) then
       data.pass2Params.values.gSunPosition:set(params.godraysOrigin)
-      data.pass2Params.values.gSunColor:set(GodraysColor):scale(UseGammaFix and (10 * GammaFixBrightnessOffset / BrightnessMultApplied) or 1)
+      data.pass2Params.values.gSunColor:set(GodraysColor):scale(10 * GammaFixBrightnessOffset / BrightnessMultApplied)
       sunRaysReady = true
     end
   end
@@ -616,11 +621,14 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
   local useChromaticAberration = params.chromaticAberrationEnabled and params.chromaticAberrationActive
   data.pass2Params.values.FEATURE_USE_CHROMATIC_ABERRATION = useChromaticAberration
   if useChromaticAberration then
-    data.pass2Params.values.gChromaticAberrationLateral:set(params.chromaticAberrationLateralDisplacement):div(rtSize):scale(100)
-    data.pass2Params.values.gChromaticAberrationUniform:set(params.chromaticAberrationUniformDisplacement):div(rtSize):scale(100)
+    data.pass2Params.values.gChromaticAberrationLateral:set(params.chromaticAberrationLateralDisplacement):div(rtSize)
+        :scale(100)
+    data.pass2Params.values.gChromaticAberrationUniform:set(params.chromaticAberrationUniformDisplacement):div(rtSize)
+        :scale(100)
   end
 
-  local useFilmGrain = ScriptSettings.POSTPROCESSING.FILM_GRAIN and Sim.cameraMode ~= ac.CameraMode.Cockpit and not Sim.isPreviewsGenerationMode
+  local useFilmGrain = ScriptSettings.POSTPROCESSING.FILM_GRAIN and Sim.cameraMode ~= ac.CameraMode.Cockpit and
+      not Sim.isPreviewsGenerationMode
   if data.pass2Params.values.FEATURE_USE_FILM_GRAIN ~= useFilmGrain then
     data.pass2Params.values.FEATURE_USE_FILM_GRAIN = useFilmGrain
 
@@ -629,9 +637,9 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
       noise:updateWithShader({
         shader = [[
         float4 hash4(float2 p) {
-          float4 q = float4(dot(p, float2(127.1, 311.7)), 
-            dot(p, float2(269.5, 183.3)), 
-            dot(p, float2(419.2, 371.9)), 
+          float4 q = float4(dot(p, float2(127.1, 311.7)),
+            dot(p, float2(269.5, 183.3)),
+            dot(p, float2(419.2, 371.9)),
             dot(p, float2(381.2, 687.4)));
           return frac(sin(q) * 43758.5453);
         }
@@ -648,9 +656,7 @@ ac.onPostProcessing(function (params, exposure, mainPass, updateExposure, rtSize
     data.pass2Params.values.gTime = Sim.gameTime
   end
 
-  if UseGammaFix then
-    data.pass2Params.values.gGammaFixBrightnessOffset = 0.45 / GammaFixBrightnessOffset
-  end
+  data.pass2Params.values.gGammaFixBrightnessOffset = 0.45 / GammaFixBrightnessOffset
   render.fullscreenPass(data.pass2Params)
   return true
 end)

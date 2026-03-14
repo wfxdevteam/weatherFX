@@ -22,8 +22,11 @@
   of complications with various transparent objects.
 ]]
 
+local Context = require 'src/context'
+local ctx = Context.ctx
+
 if not ScriptSettings.EXTRA_EFFECTS.RAIN_HAZE then
-  UpdateRainHaze = function (dt) end
+  UpdateRainHaze = function(dt) end
   return
 end
 
@@ -32,14 +35,15 @@ local windOffset = vec3()
 local windVelocity = vec3()
 local texData = {}
 
-table.insert(OnResolutionChange, function ()
+table.insert(OnResolutionChange, function()
   table.clear(texData)
 end)
 
 local function createPassData(uniqueKey)
   local size = render.getRenderTargetSize()
   return {
-    txBaseNoise = ui.ExtraCanvas(size * 0.4, 1, render.TextureFormat.R8.UNorm):setName('Rain haze: base ('..tostring(uniqueKey)..')'), -- 40% of main screen resolution
+    txBaseNoise = ui.ExtraCanvas(size * 0.4, 1, render.TextureFormat.R8.UNorm):setName('Rain haze: base (' ..
+      tostring(uniqueKey) .. ')'), -- 40% of main screen resolution
     gBlurRadius = vec2(8 / size.x, 8 / size.y),
   }
 end
@@ -60,22 +64,22 @@ local renderHazeNoiseParams = {
 local renderHazeApplyParams = {
   blendMode = render.BlendMode.AlphaBlend,
   depthMode = render.DepthMode.ReadOnly,
-  depth = 10,  -- fullscreen pass applies to areas further than 10 meters from camera, to improve performance
+  depth = 10, -- fullscreen pass applies to areas further than 10 meters from camera, to improve performance
   textures = { ['txBase.1'] = '' },
   values = { gBlurRadius = 0 },
   shader = 'shaders/rainhaze_apply.fx'
 }
 
 local function renderHaze(passID, frameIndex, uniqueKey)
-  render.measure('Rain haze', function ()
+  render.measure('Rain haze', function()
     local tex = table.getOrCreate(texData, uniqueKey, createPassData, uniqueKey)
-  
+
     render.backupRenderTarget()
     renderHazeNoiseParams.values.gIntensity = intensity
     renderHazeNoiseParams.values.gDistanceInv = 1 / math.lerp(120, 60, math.min(intensity, 1))
     tex.txBaseNoise:updateSceneWithShader(renderHazeNoiseParams)
     render.restoreRenderTarget()
-  
+
     renderHazeApplyParams.textures['txBase.1'] = tex.txBaseNoise
     renderHazeApplyParams.values.gBlurRadius = tex.gBlurRadius
     render.fullscreenPass(renderHazeApplyParams)
@@ -87,7 +91,7 @@ local subscribed ---@type fun()?
 function UpdateRainHaze(dt)
   local cc = CurrentConditions
   local rain = 1.1 * cc.rain / (0.1 + cc.rain)
-  intensity = rain * (FinalFog + cc.thunder)
+  intensity = rain * (ctx.finalFog + cc.thunder)
   -- intensity = 1
   if intensity < 0.2 then
     if subscribed then
@@ -103,6 +107,6 @@ function UpdateRainHaze(dt)
 
   ac.getWindVelocityTo(windVelocity)
   windOffset:addScaled(windVelocity, -dt)
-  windOffset.y = windOffset.y + 15 * dt  -- 15 m/s for base rain speed
+  windOffset.y = windOffset.y + 15 * dt -- 15 m/s for base rain speed
   intensity = intensity * math.lerpInvSat(intensity, 0.2, 0.25)
 end

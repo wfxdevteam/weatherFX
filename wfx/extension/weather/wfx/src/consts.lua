@@ -14,10 +14,6 @@ SunRaysIntensity = 0.02         -- some good PP-filters expode with sun rays at 
 GammaFixBrightnessOffset = 0.01
 GammaFixLightsDivisor = 100
 
-SceneBrightnessMultNoPP = 2  -- without post-processing active: brightness multiplier for the whole scene
-SceneBrightnessMultPP = 3    -- with post-processing active: brightness multiplier for the scene (in most cases, gets compensated by auto-exposure)
-FilterBrightnessMultPP = 1.0 -- with post-processing active: brightness adjustment applied after auto-exposure
-
 function InitializeConsts()
   ac.useLinearColorSpace(true, GammaFixLightsDivisor)
   ac.setWeatherLightsMultiplier(1)

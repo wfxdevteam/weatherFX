@@ -2,6 +2,9 @@
   Falling stars.
 ]]
 
+local Context = require 'src/context'
+local ctx = Context.ctx
+
 if not ScriptSettings.EXTRA_EFFECTS.ECLIPSE then
   return
 end
@@ -41,7 +44,7 @@ local function castFallingStar()
       ]]
     })
   end, 3)
-  setInterval(function ()
+  setInterval(function()
     stage = stage + Sim.dt * speed
     if stage > 1 then
       sub()
@@ -50,8 +53,8 @@ local function castFallingStar()
   end)
 end
 
-setInterval(function ()
-  if math.random() > 0.97 and NightK > 0 then
+setInterval(function()
+  if math.random() > 0.97 and ctx.nightK > 0 then
     castFallingStar()
   end
 end, 2.7)

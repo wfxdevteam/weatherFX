@@ -14,30 +14,25 @@ Create the fork
 > Make sure you're selecting your personal account as the owner.
 
 > [!IMPORTANT]
-> The "Copy the `master` branch only" option will be enabled by default, it is important you disable it,  
-> since we don't usually accept PRs for the master branch! [More info below](#contributing-guidelines)
-<img width="550" alt="fork-settings" src="https://github.com/user-attachments/assets/c05df9fe-6465-44fe-bd98-264a768263c2" />
+> The `Copy the master branch only` option will be enabled by default, it is important you disable it,  
+> since we don't accept PRs for the master branch! [More info below](#contributing-guidelines)
 
-If you see a new repository appear on your personal profile then you did everything correctly, and can move onto the next step.
+### 2. Cloning
 
-### 2. Clone it to your local machine
+> [!NOTE]
+> If you want to clone the repo directly to your Assetto Corsa root folder, you *can* do that.
+> But I strongly advise against that, as it will pollute your root folder with everything that is in the repo root.
+> If you do it though, you can skip the next step.
 
 In your new repository, click on the green `Code` button and copy the web URL.
 
 <img width="350" alt="img" src="https://github.com/user-attachments/assets/af3a68d7-bf16-4d1e-9a58-5ece0084551c" />
-
-> [!NOTE]
-> If you want to clone the repo directly to your Assetto Corsa root folder, you *can* do that.
-> But I would strongly advise against that, as it would pollute your root folder with everything that is in the repo root.
-> If you do it though, you can skip the next step.
 
 Then open a terminal in a separate empty folder you want to clone it to and run:
 
 ```sh
 git clone https://github.com/wfxdevteam/weatherFX.git
 ```
-
-If you see your folder is now filled with the repository's contents, you did everything correctly and can move onto the next step.
 
 ### 3. Symlinking
 Symlinking allows you to work directly in your cloned repository without having to manually copy files over every time you make a change.
@@ -71,8 +66,7 @@ Also take a look at the Contributing Guidelines below to see how we handle contr
 ### General guidelines
 
 - Clearly describe what was changed.
-- For major changes, open an issue first to discuss your idea.
-- Ensure changes work with the latest CSP version. (Preferably latest preview version)
+- Ensure changes work with the latest CSP version.
 - Follow the existing structure and naming conventions.
 - Do not modify unrelated parts of the project. (README.md, The file you're reading right now, etc.)
 
@@ -84,7 +78,7 @@ Also take a look at the Contributing Guidelines below to see how we handle contr
 ### Pull Requests
 
 - A pull request should be reviewed by at least one maintainer before merging.
-- Keep PRs relatively small and easy to review.
+- Keep PRs *relatively* small and easy to review.
 - Write clear and descriptive titles.
 
 ### Testing

@@ -3,19 +3,20 @@
 ![Static Badge](https://img.shields.io/badge/License-GPL%20v3-blue)
 [![Static Badge](https://img.shields.io/badge/Discord-%23f9f9f9?logo=discord)](https://discord.gg/Z82zauQkrd)
 
-### How this idea came along
+This is a free weatherFX implementation for Assetto Corsa. 
+It was created because CSP 0.2.10+ broke compatibility with [Sol](https://www.overtake.gg/downloads/sol.24914/).
 
-Since CSP 0.2.10, Sol compatibility has been broken, meaning anyone on a newer version of CSP was left without Sol.
-The only viable free alternative was the default implementation by Ilja. Having nothing to do I thought, *why not just update Sol myself?*
+## Installation
 
-I reached out to [Peter](https://www.patreon.com/c/peterboese) to ask for permission, but he basically told me that the Sol codebase is a mess and that I shouldn't try to fix it.
-So instead of fixing the unfixable I decided to get a few people together and build our own implementation!
+1. Go to the [latest release](https://github.com/wfxdevteam/weatherFX/releases/latest) page.
+2. Download the `.zip` file.
+3. Extract the contents of the `.zip` into your assetto corsa root folder.
 
-## Authors
+## Contributors
 
-- [DasCiba](https://www.github.com/ciba1991)
-- [lint0](https://www.github.com/lint069)
-- Chris
+<a href="https://github.com/wfxdevteam/weatherFX/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=wfxdevteam/weatherFX" />
+</a>
 
 ## License
 
@@ -23,4 +24,4 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE.md](https:
 
 ## Acknowledgments
 
-- Big thanks to [x4fab](https://www.github.com/gro-ove) mainly for providing the Default wfx implementation.
+- Big thanks to [x4fab](https://www.github.com/gro-ove) mainly for providing the default wfx implementation.

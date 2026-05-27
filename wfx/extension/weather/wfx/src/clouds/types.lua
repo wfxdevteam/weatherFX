@@ -1,10 +1,10 @@
 -- How many textures of different types are available, with sizes and offsets in the atlas
 local CloudTextures = {
-  Blurry = { group = 'b', count = 16, start = vec2(0, 0/8), size = vec2(2/16, 1/8) },
-  Hovering = { group = 'h', count = 16, start = vec2(0, 2/8), size = vec2(2/16, 1/8) },
-  Spread = { group = 's', count = 6, start = vec2(0, 4/8), size = vec2(2/16, 1/8) },
-  Flat = { group = 'f', count = 5, start = vec2(0, 6/8), size = vec2(2/16, 1/8) },
-  Bottoms = { group = 'd', count = 5, start = vec2(0, 7/8), size = vec2(1/16, 1/8) },
+  Blurry = { group = 'b', count = 16, start = vec2(0, 0 / 8), size = vec2(2 / 16, 1 / 8) },
+  Hovering = { group = 'h', count = 16, start = vec2(0, 2 / 8), size = vec2(2 / 16, 1 / 8) },
+  Spread = { group = 's', count = 6, start = vec2(0, 4 / 8), size = vec2(2 / 16, 1 / 8) },
+  Flat = { group = 'f', count = 5, start = vec2(0, 6 / 8), size = vec2(2 / 16, 1 / 8) },
+  Bottoms = { group = 'd', count = 5, start = vec2(0, 7 / 8), size = vec2(1 / 16, 1 / 8) },
 }
 
 -- Various helper functions for clouds
@@ -91,9 +91,9 @@ function CloudTypes.Dynamic(cloud, pos, scale)
   cloudutils.setProcNormalShare(cloud, math.lerp(1, 0.7, fidelityRandom), 1.5)
 
   local cloudSize = math.lerp(2.5, 3.5, sizeRandom) * (scale or CloudSpawnScale)
-  cloudutils.setPos(cloud, { 
-    pos = pos, 
-    size = cloudSize, 
+  cloudutils.setPos(cloud, {
+    pos = pos,
+    size = cloudSize,
     procScale = math.lerp(1.6, 1.2, fidelityRandom) / cloudSize
   })
 
@@ -130,10 +130,10 @@ function CloudTypes.Hovering(cloud, pos, scale)
   cloud.procSharpnessMult = 0
   cloud.extraFidelity = 0
   cloudutils.setProcNormalShare(cloud, 0.2, 2)
-  cloudutils.setPos(cloud, { 
-    pos = pos, 
+  cloudutils.setPos(cloud, {
+    pos = pos,
     horizontal = true,
-    size = math.lerp(8, 12, math.random()) * (scale or CloudSpawnScale), 
+    size = math.lerp(8, 12, math.random()) * (scale or CloudSpawnScale),
     procScale = 0.1 / (scale or CloudSpawnScale)
   })
   cloud.horizontalHeading = math.random() * 180
@@ -152,10 +152,10 @@ function CloudTypes.Spread(cloud, pos, scale)
   cloud.procSharpnessMult = 0
   cloud.extraFidelity = 1
   cloudutils.setProcNormalShare(cloud, 0.2)
-  cloudutils.setPos(cloud, { 
-    pos = pos, 
+  cloudutils.setPos(cloud, {
+    pos = pos,
     horizontal = true,
-    size = math.lerp(4, 6, math.random()) * (scale or CloudSpawnScale), 
+    size = math.lerp(4, 6, math.random()) * (scale or CloudSpawnScale),
     procScale = 0.1 / (scale or CloudSpawnScale),
     aspectRatio = 0.8
   })
@@ -185,9 +185,9 @@ function CloudTypes.Low(cloud, pos, distance)
   cloud.extras.randomOffset = math.atan2(pos.x, pos.y)
   cloud.extras.procMap = cloud.procMap:clone()
   cloudutils.setProcNormalShare(cloud, 0.2, 2)
-  cloudutils.setPos(cloud, { 
+  cloudutils.setPos(cloud, {
     pos = pos,
-    height = 19 - 3 * distance + (heightFixes[index + 1] or 0), 
+    height = 19 - 3 * distance + (heightFixes[index + 1] or 0),
     distance = 50 + distance,
     size = 1.5,
     aspectRatio = 0.15
@@ -207,9 +207,9 @@ function CloudTypes.Test(cloud, pos, distance)
   cloud.orderBy = 0
   cloud.cutoff = 0
   cloudutils.setProcNormalShare(cloud, 0, 2)
-  cloudutils.setPos(cloud, { 
-    pos = pos, 
-    size = 7, 
+  cloudutils.setPos(cloud, {
+    pos = pos,
+    size = 7,
     procScale = 1
   })
   cloud.receiveShadowsOpacityMult = 0

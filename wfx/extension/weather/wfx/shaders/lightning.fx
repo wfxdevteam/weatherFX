@@ -58,7 +58,9 @@ float4 main(PS_IN pin){
       if (baseTexY < 0.01) v = 0;
       v += pow(txGlow.SampleLevel(samLinearSimple, baseUV, 0), 2) * saturate(baseTexY * 3) * 0.002;
       return float4(pin.ApplyFog(
-        gWhiteRefPoint.xxx * lerp(100, 0, pow(gTimer, 0.01)) * lerp(1, float3(1 - baseTexY, baseTexY, baseTexY), 0.2)), v);
+        gWhiteRefPoint.xxx 
+          * lerp(lerp(100, 0, pow(gTimer, 0.01)), 5e4, pow(1 - gTimer, 400)) 
+          * lerp(1, float3(1 - baseTexY, baseTexY, baseTexY), 0.2)), v);
     #endif
     return s1 < 0.01;// / (1 - abs(s2 - s1) * 0);
   }

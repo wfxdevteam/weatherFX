@@ -15,7 +15,6 @@ float4 main(PS_IN pin) {
     ret.rgb = pow(ret.rgb, 2.2);
   #endif
 
-  ret.rgb += dithering(pin.PosH.xy) * 10;
   ret.rgb *= gBrightnessMult;
   return ret;
 }

@@ -1,100 +1,82 @@
---[[
-  Core for extra render effects. Allows to set new functions to be called to render new stuff
-  by calling `RenderSkySubscribe()` and automatically handles `ac.enableRenderCallback()`. This way,
-  multiple effects can be combined together.
-  TODO: Might need some extra parameter allowing to define effects order more clear.
-]]
+-- render cb subscription system
+-- exact same as render.lua from base
 
-local renderSkyListeners = {}
-local renderCloudsListeners = {}
-local renderTrackListeners = {}
+local skyListeners = {}
+local cloudListeners = {}
+local trackListeners = {}
+
+local function updateSubscriptions()
+  local mSky, mCloud, mTrack = 0, 0, 0
+  for _, e in ipairs(skyListeners) do mSky = bit.bor(mSky, e.mask) end
+  for _, e in ipairs(cloudListeners) do mCloud = bit.bor(mCloud, e.mask) end
+  for _, e in ipairs(trackListeners) do mTrack = bit.bor(mTrack, e.mask) end
+  ac.enableRenderCallback(mSky, mCloud, mTrack, 0)
+end
 
 function script.renderSky(passID, frameIndex, uniqueKey)
-  for i = 1, #renderSkyListeners do
-    local e = renderSkyListeners[i]
-    if bit.band(e.passIDMask, passID) ~= 0 then
-      e.callback(passID, frameIndex, uniqueKey)
+  for _, e in ipairs(skyListeners) do
+    if bit.band(e.mask, passID) ~= 0 then
+      e.fn(passID, frameIndex, uniqueKey)
     end
   end
 end
 
 function script.renderClouds(passID, frameIndex, uniqueKey)
-  for i = 1, #renderCloudsListeners do
-    local e = renderCloudsListeners[i]
-    if bit.band(e.passIDMask, passID) ~= 0 then
-      e.callback(passID, frameIndex, uniqueKey)
+  for _, e in ipairs(cloudListeners) do
+    if bit.band(e.mask, passID) ~= 0 then
+      e.fn(passID, frameIndex, uniqueKey)
     end
   end
 end
 
 function script.renderTrack(passID, frameIndex, uniqueKey)
-  for i = 1, #renderTrackListeners do
-    local e = renderTrackListeners[i]
-    if bit.band(e.passIDMask, passID) ~= 0 then
-      e.callback(passID, frameIndex, uniqueKey)
+  for _, e in ipairs(trackListeners) do
+    if bit.band(e.mask, passID) ~= 0 then
+      e.fn(passID, frameIndex, uniqueKey)
     end
   end
 end
 
-local function updateSkySubscription()
-  local mSky = 0
-  local mClouds = 0
-  local mTrack = 0
-  for i = 1, #renderSkyListeners do
-    local e = renderSkyListeners[i]
-    mSky = bit.bor(mSky, e.passIDMask)
-  end
-  for i = 1, #renderCloudsListeners do
-    local e = renderCloudsListeners[i]
-    mClouds = bit.bor(mClouds, e.passIDMask)
-  end
-  for i = 1, #renderTrackListeners do
-    local e = renderTrackListeners[i]
-    mTrack = bit.bor(mTrack, e.passIDMask)
-  end
-  ac.enableRenderCallback(mSky, mClouds, mTrack, 0)
-end
-
----@param passIDMask render.PassID
----@param callback fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
----@param priority integer
----@return fun() @Call returned function to unsubscribe.
-function RenderSkySubscribe(passIDMask, callback, priority)
-  if passIDMask == 0 then return function () end end
-  local e = { passIDMask = passIDMask, callback = callback, priority = priority or 0 }
-  renderSkyListeners[#renderSkyListeners + 1] = e
-  updateSkySubscription()
-  table.sort(renderSkyListeners, function (a, b) return a.priority > b.priority end)
+---@param mask render.PassID
+---@param fn fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
+---@param priority integer?
+---@return fun() unsubscribe
+function RenderSkySubscribe(mask, fn, priority)
+  if mask == 0 then return function() end end
+  local e = { mask = mask, fn = fn, priority = priority or 0 }
+  skyListeners[#skyListeners + 1] = e
+  table.sort(skyListeners, function(a, b) return a.priority > b.priority end)
+  updateSubscriptions()
   return function()
-    table.removeItem(renderSkyListeners, e)
-    updateSkySubscription()
+    table.removeItem(skyListeners, e)
+    updateSubscriptions()
   end
 end
 
----@param passIDMask render.PassID
----@param callback fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
----@return fun() @Call returned function to unsubscribe.
-function RenderCloudsSubscribe(passIDMask, callback)
-  if passIDMask == 0 then return function () end end
-  local e = { passIDMask = passIDMask, callback = callback }
-  renderCloudsListeners[#renderCloudsListeners + 1] = e
-  updateSkySubscription()
+---@param mask render.PassID
+---@param fn fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
+---@return fun() unsubscribe
+function RenderCloudsSubscribe(mask, fn)
+  if mask == 0 then return function() end end
+  local e = { mask = mask, fn = fn }
+  cloudListeners[#cloudListeners + 1] = e
+  updateSubscriptions()
   return function()
-    table.removeItem(renderCloudsListeners, e)
-    updateSkySubscription()
+    table.removeItem(cloudListeners, e)
+    updateSubscriptions()
   end
 end
 
----@param passIDMask render.PassID
----@param callback fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
----@return fun() @Call returned function to unsubscribe.
-function RenderTrackSubscribe(passIDMask, callback)
-  if passIDMask == 0 then return function () end end
-  local e = { passIDMask = passIDMask, callback = callback }
-  renderTrackListeners[#renderTrackListeners + 1] = e
-  updateSkySubscription()
+---@param mask render.PassID
+---@param fn fun(passID: render.PassID, frameIndex: integer, uniqueKey: integer)
+---@return fun() unsubscribe
+function RenderTrackSubscribe(mask, fn)
+  if mask == 0 then return function() end end
+  local e = { mask = mask, fn = fn }
+  trackListeners[#trackListeners + 1] = e
+  updateSubscriptions()
   return function()
-    table.removeItem(renderTrackListeners, e)
-    updateSkySubscription()
+    table.removeItem(trackListeners, e)
+    updateSubscriptions()
   end
 end

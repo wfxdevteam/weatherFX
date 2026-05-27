@@ -5,16 +5,17 @@ float __wfxfn_noise(float t) {
 }
 
 float __wfxfn_computeSunAura(float2 uv, float2 pos) {
-  float2 main = uv - pos;  
+  float2 main = (uv - pos);  
   float ang = atan2(main.y, main.x);
   float distB = length(main); 
+  float distN = distB; 
   if (USE_LINEAR_COLOR_SPACE) {
     distB = pow(distB, 4);
   }
   #ifdef VR_MODE 
     distB *= 100;
   #endif
-  return (16 + sin(__wfxfn_noise(sin(ang * 2 + pos.x) * 4.0 - cos(ang * 3 + pos.y)) * 16)) / (distB * 128 + 1);  
+  return (16 + distN * 8 * sin(__wfxfn_noise(sin(ang * 2 + pos.x) * 4.0 - cos(ang * 3 + pos.y)) * 16)) / (distB * 48 + 1);  
 }
 
 float __wfxfn_dot2(float2 v){

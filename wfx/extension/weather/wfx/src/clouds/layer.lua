@@ -269,7 +269,7 @@ function CloudsLayer.create(def)
   return setmetatable({
     def = def,
     frameIndex = 0,
-    ctx = { cameraPos = vec3(), windDir = {x = 0, y = 0} },
+    ctx = { cameraPos = vec3(), windDir = { x = 0, y = 0 } },
     prevCameraPos = vec2(1e9),
     windOffset = vec2(),
     cloudCells = {},
@@ -328,9 +328,9 @@ function CloudsLayer_index:update(baseCameraPos, windDir, windSpeed, cloudsCount
     end
 
     ctx.cloudsCount = cloudsCount
-    ctx.cloudsFade = self.def.cloudsPerCell > 2 
-      and 1 / math.lerp(self.def.cloudsPerCell / 2, 1, (cloudsCount / self.def.cloudsPerCell) ^ 2)
-      or 1
+    ctx.cloudsFade = self.def.cloudsPerCell > 2
+        and 1 / math.lerp(self.def.cloudsPerCell / 2, 1, (cloudsCount / self.def.cloudsPerCell) ^ 2)
+        or 1
   end
 
   if cloudsCount > 0 then
